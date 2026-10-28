@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Step 1: build, preview (what-if) and deploy the whole lab with Bicep.
-# The deployment takes about 50-60 minutes (the two VPN gateways take ~45 minutes in parallel).
+# The VPN gateways are the long pole (Microsoft: 45 minutes or more); the lab run on 28 Oct 2026 finished in about 27 minutes.
 source ./00-variables.sh
 cd ../infra
 

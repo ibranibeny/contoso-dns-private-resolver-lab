@@ -14,7 +14,7 @@
   <h1>Replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
   <p class="lead">A working simulation of the hybrid target design. The "on-prem" site runs in <b>Indonesia Central</b> (an AD DS + DNS server and a VPN gateway). Azure runs in <b>Southeast Asia</b> as hub-spoke (a VPN gateway and DNS Private Resolver in the hub, a VM and a Private Endpoint in the spoke). A <b>site-to-site IPsec VPN</b> connects the two, standing in for ExpressRoute.</p>
   <div class="callout note"><div class="callout-h">Lab run completed</div><div>Every screenshot and captured output on this page comes from a real run on 28 Oct 2026. Captured outputs are text copies of the screenshots; subscription names and IDs are masked.</div></div>
-  <div class="chips"><span>Infrastructure as code: Bicep (subscription scope)</span><span>Time: about 90 minutes (mostly waiting for the gateways)</span><span>Cost: about USD 0.92/hour plus 2 VMs while running</span><span>Proves: AD forwarding, domain join, Private Endpoint from on-prem</span></div>
+  <div class="chips"><span>Infrastructure as code: Bicep (subscription scope)</span><span>Time: about 60-90 minutes (this run: 27 min deployment + 30 min in-VM steps and tests)</span><span>Cost: about USD 0.92/hour plus 2 VMs while running</span><span>Proves: AD forwarding, domain join, Private Endpoint from on-prem</span></div>
   <figure class="diagram"><a href="assets/img/diagrams/lab-architecture.png" target="_blank" rel="noopener"><img src="assets/img/diagrams/lab-architecture.png" alt="Lab architecture with official Azure icons"></a>
   <figcaption>Lab architecture, drawn with the official Azure Architecture Icons.</figcaption></figure>
   <div class="two">
@@ -32,7 +32,7 @@
 <li>An Azure subscription where you can create resource groups, networks, VMs and gateways (Contributor or Owner).</li>
 <li>Azure Cloud Shell (Bash): Azure CLI 2.75.0 or later and Bicep (Cloud Shell has both; step 0 upgrades Bicep).</li>
 <li>Quota for 2 vCPUs of the chosen VM size in <b>each</b> region. Step 0 checks it.</li>
-<li>About 90 minutes. The Bicep deployment takes 50-60 minutes (two VPN gateways in parallel), and the in-VM steps take about 25 minutes.</li>
+<li>About 60-90 minutes. The Bicep deployment took 27 minutes in this run (allow up to an hour: VPN gateways can take 45 minutes or more), and the in-VM steps and tests took about 30 minutes.</li>
 </ul>
 <table class="grid compact"><thead><tr><th>Running cost (USD list price, approximate)</th><th>Per hour</th></tr></thead><tbody>
 <tr><td>2 × VPN gateway VpnGw1AZ (USD 153.30/month each, default pricing-page region)</td><td>≈ 0.42</td></tr>
@@ -97,11 +97,11 @@ param vpnSharedKey = readEnvironmentVariable(&#x27;VPN_PSK&#x27;)</code></pre></
 <section class="step" id="s02">
   <div class="step-h"><span class="badge">2</span><div><h2>Preview with what-if, then deploy</h2>
   <div class="meta"><span>Cloud Shell</span><span>Time: 3 min</span></div></div></div>
-  <p class="why"><code>az deployment sub what-if</code> lists every resource the template will create, before anything is created. The deployment then runs in Azure with <code>--no-wait</code>, so it carries on if Cloud Shell times out. It takes about 50-60 minutes: the two VPN gateways (about 45 minutes each, in parallel) are the long pole.</p>
+  <p class="why"><code>az deployment sub what-if</code> lists every resource the template will create, before anything is created. The deployment then runs in Azure with <code>--no-wait</code>, so it carries on if Cloud Shell times out. The two VPN gateways are the long pole (Microsoft says a gateway can take 45 minutes or more); in this run the whole deployment finished in about 27 minutes, because the two site modules run in parallel.</p>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./01-deploy-infra.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/01-deploy-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 1: build, preview (what-if) and deploy the whole lab with Bicep.
-# The deployment takes about 50-60 minutes (the two VPN gateways take ~45 minutes in parallel).
+# The VPN gateways are the long pole (Microsoft: 45 minutes or more); the lab run on 28 Oct 2026 finished in about 27 minutes.
 source ./00-variables.sh
 cd ../infra
 
@@ -126,7 +126,7 @@ or run ./02-wait-infra.sh</pre></div>
 </section>
 <section class="step" id="s03">
   <div class="step-h"><span class="badge">3</span><div><h2>Wait for the deployment and read its outputs</h2>
-  <div class="meta"><span>Cloud Shell / Azure portal</span><span>Time: 45-55 min</span></div></div></div>
+  <div class="meta"><span>Cloud Shell / Azure portal</span><span>Time: 25-60 min</span></div></div></div>
   <p class="why">The script polls the deployment state every minute, then lists each module's duration and the outputs: both gateway public IPs, the inbound endpoint IP and the generated storage account name.</p>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./02-wait-infra.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/02-wait-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
