@@ -10,7 +10,7 @@ az network vnet subnet list -g "$RG_AZ" --vnet-name vnet-hub-sea --query "[].{Su
 echo "== Site-to-site connections =="
 for c in "$RG_AZ cn-hub-to-onprem" "$RG_ONP cn-onprem-to-hub"; do
   set -- $c
-  az network vpn-connection show -g "$1" -n "$2" --query "[name, connectionStatus, connectionType, connectionProtocol]" -o tsv
+  az network vpn-connection show -g "$1" -n "$2" --query "[[name, connectionStatus, connectionType, connectionProtocol]]" -o tsv
 done | awk -F'\t' 'BEGIN{printf "%-18s %-10s %-6s %s\n","Connection","Status","Type","Protocol"} {printf "%-18s %-10s %-6s %s\n",$1,$2,$3,$4}'
 echo "== Peering =="
 az network vnet peering list -g "$RG_AZ" --vnet-name vnet-hub-sea   --query "[].{Peering:name, State:peeringState, GatewayTransit:allowGatewayTransit}" -o table
