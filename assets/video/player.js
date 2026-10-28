@@ -17,6 +17,8 @@
   var players = [];
 
   function D() { return window.LAB_VIDEO_DATA; }
+  // lvclock=wall (test hook): advance by real elapsed time even when the browser renders few frames
+  var WALL = /[?&]lvclock=wall\b/.test(location.search);
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function sv(tag, attrs) { var e = document.createElementNS(NS, tag); if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
   function btn(icon, label, cls) { var b = el('button', cls || 'lv-btn', icon); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; return b; }
@@ -187,15 +189,20 @@
   Player.prototype.loop = function (ts) {
     var self = this;
     if (!this.playing) return;
-    var dt = this.last ? Math.min(0.1, (ts - this.last) / 1000) : 0; this.last = ts;
-    var b = this.beats[this.k], sdt = dt * this.speed;
+    var dt = this.last ? Math.min(WALL ? 600 : 0.25, (ts - this.last) / 1000) : 0; this.last = ts;
+    var b = this.beats[this.k], sdt = dt * this.speed, guard = 0;
     if (this.rt && this.rt.tick) this.rt.tick(sdt);
     if (!b.wait) {
       this.elT += sdt;
-      var speechHold = this.narrate && this.speaking && this.elT < b.d * 4;
-      if (this.elT >= b.d && !speechHold) {
-        if (this.k < this.beats.length - 1) this.goto(this.k + 1);
-        else { this.finish(); return; }
+      while (this.elT >= b.d && guard++ < 400) {
+        if (this.narrate && this.speaking && this.elT < b.d * 4) break;
+        var over = this.elT - b.d;
+        if (this.k >= this.beats.length - 1) { this.finish(); return; }
+        this.goto(this.k + 1);
+        b = this.beats[this.k];
+        if (b.wait) break;
+        this.elT = over;
+        if (over > 0 && this.rt && this.rt.tick) this.rt.tick(over);
       }
     }
     this.updateBar();
@@ -383,6 +390,7 @@
         if (Math.abs(p1[1] - p2[1]) < 2 || Math.abs(p1[0] - p2[0]) < 2) d = 'M' + p1 + 'L' + p2;
         else if (Math.abs(p2[0] - p1[0]) > Math.abs(p2[1] - p1[1])) { var mx = (p1[0] + p2[0]) / 2; d = 'M' + p1 + 'L' + mx + ',' + p1[1] + 'L' + mx + ',' + p2[1] + 'L' + p2; }
         else { var my = (p1[1] + p2[1]) / 2; d = 'M' + p1 + 'L' + p1[0] + ',' + my + 'L' + p2[0] + ',' + my + 'L' + p2; }
+        L.fl.appendChild(sv('path', { d: d, 'class': 'lv-fghost', 'stroke-width': 3, 'stroke-dasharray': '10 10' }));
         var g = sv('g', { 'class': 'lv-fedge' });
         var pth = sv('path', { d: d, 'stroke-width': 4, 'marker-end': 'url(#' + mk.id + ')', 'class': e.dash ? '' : 'draw' });
         if (e.dash) pth.setAttribute('stroke-dasharray', '12 10');

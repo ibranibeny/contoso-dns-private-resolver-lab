@@ -20,7 +20,8 @@
 .lv-pk circle{filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
 .lv-hot rect{fill:transparent;cursor:pointer;stroke:transparent;transition:stroke .2s}
 .lv-hot rect:hover{stroke:rgba(0,120,212,.85);stroke-dasharray:14 8}
-.lv-fnode{opacity:0;transition:opacity .6s}
+.lv-fnode{opacity:.2;transition:opacity .6s}
+.lv-fghost{fill:none;stroke:#9FB3C8;opacity:.55}
 .lv-fnode.on{opacity:1}
 .lv-fnode rect.card{fill:#fff;stroke:#BFD3E6}
 .lv-fnode text{font-family:"Segoe UI",system-ui,sans-serif;fill:#0B2B4C;dominant-baseline:hanging}
@@ -49,8 +50,9 @@
 .lv-ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;text-align:center;padding:5%;
   background:linear-gradient(180deg,rgba(6,18,32,.48),rgba(6,18,32,.80));color:#fff}
 .lv-ov[hidden]{display:none}
-.lv-ov.poster{background:linear-gradient(180deg,rgba(6,18,32,.86),rgba(6,18,32,.93))}
-.lv-cc{font:700 12px/1 "Segoe UI",system-ui,sans-serif;border:2px solid currentColor;border-radius:4px;padding:3px 4px;display:inline-block;letter-spacing:.04em}
+.lv-ov.poster{background:linear-gradient(180deg,#0B2036,#06121F)}
+.lv-cc{font:800 12px/1 "Segoe UI",system-ui,sans-serif;color:#fff;background:transparent;border:2px solid #fff;border-radius:4px;padding:3px 5px;display:inline-block;letter-spacing:.06em}
+.lv-btn.on .lv-cc{background:var(--lv-amber);border-color:var(--lv-amber);color:#0B1B2B}
 
 .lv-ov .k{font-size:clamp(10px,1.4cqw,15px);letter-spacing:.12em;color:var(--lv-amber);font-weight:700;text-transform:uppercase}
 .lv-ov .t{font-size:clamp(16px,3.4cqw,40px);font-weight:700;line-height:1.15;max-width:90%}
