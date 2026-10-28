@@ -33,7 +33,8 @@
 @keyframes lvdraw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
 .lv-fedge text{font-family:"Segoe UI",system-ui,sans-serif;fill:#4A5D73;text-anchor:middle}
 .lv-badge{position:absolute;inset-inline-start:1.6%;top:2.6%;background:rgba(11,43,76,.9);color:#fff;font-size:clamp(10px,1.35cqw,16px);
-  padding:.32em .75em;border-radius:6px;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:60%}
+  padding:.32em .75em;border-radius:6px;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:60%;transition:opacity .6s}
+.lv-badge.hide{opacity:0}
 .lv-choices{position:absolute;inset-inline-end:1.6%;top:2.6%;display:flex;gap:.45em;flex-wrap:wrap;justify-content:flex-end;max-width:58%}
 .lv-choices button{font:600 clamp(10px,1.3cqw,15px)/1.2 "Segoe UI",system-ui,sans-serif;color:#fff;background:rgba(0,120,212,.92);border:0;border-radius:999px;
   padding:.45em .9em;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}

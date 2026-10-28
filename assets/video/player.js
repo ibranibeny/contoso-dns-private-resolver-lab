@@ -186,7 +186,7 @@
     this.raf = requestAnimationFrame(function (t) { self.loop(t); });
   };
   Player.prototype.pause = function () {
-    this.playing = false; cancelAnimationFrame(this.raf);
+    this.playing = false; cancelAnimationFrame(this.raf); this.badge.classList.remove('hide');
     this.bPlay.innerHTML = ICON.play; this.bPlay.setAttribute('aria-label', 'Play (Space)'); this.bPlay.title = 'Play (Space)';
     this.stopSpeech();
   };
@@ -196,6 +196,7 @@
     var dt = this.last ? Math.min(WALL ? 600 : 0.25, (ts - this.last) / 1000) : 0; this.last = ts;
     var b = this.beats[this.k], sdt = dt * this.speed, guard = 0;
     if (this.rt && this.rt.tick) this.rt.tick(sdt);
+    this.badgeT = (this.badgeT || 0) + sdt; this.badge.classList.toggle('hide', this.badgeT > 5);
     if (!b.wait) {
       this.elT += sdt;
       while (this.elT >= b.d && guard++ < 400) {
@@ -252,6 +253,7 @@
     this.hideInfo();
     if (this.ended && !initial) { this.ended = false; this.ov.hidden = true; }
     var rebuild = !this.rt || this.rt.si !== b.si || k <= this.k;
+    if (!this.rt || this.rt.si !== b.si) { this.badgeT = 0; this.badge.classList.remove('hide'); }
     if (rebuild) {
       this.rt = this.renderScene(b.si);
       for (j = this.sceneStart[b.si]; j < k; j++) this.rt.apply(this.beats[j], true);
