@@ -11,6 +11,7 @@ Open `index.html` (published with GitHub Pages) for the guide, the screenshots a
 ```bash
 git clone https://github.com/ibranibeny/contoso-dns-private-resolver-lab.git
 cd contoso-dns-private-resolver-lab/scripts
+chmod +x *.sh && git config core.fileMode false   # GitHub stores the scripts without the executable bit
 ./00-preflight.sh      # then run 01 ... 07 in order, or ./run-all.sh
 ./99-cleanup.sh        # delete everything when you are done (the gateways and resolver bill by the hour)
 ```
