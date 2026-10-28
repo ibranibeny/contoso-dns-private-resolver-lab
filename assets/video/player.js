@@ -19,6 +19,8 @@
   function D() { return window.LAB_VIDEO_DATA; }
   // lvclock=wall (test hook): advance by real elapsed time even when the browser renders few frames
   var WALL = /[?&]lvclock=wall\b/.test(location.search);
+  // lvdebug (test hook): show the narration audio state on the stage
+  var DEBUG = /[?&]lvdebug\b/.test(location.search);
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function sv(tag, attrs) { var e = document.createElementNS(NS, tag); if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
   function btn(icon, label, cls) { var b = el('button', cls || 'lv-btn', icon); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; return b; }
@@ -65,7 +67,7 @@
     if (!this.v) { host.textContent = 'Video not found: ' + id; return; }
     this.flatten();
     this.k = -1; this.elT = 0; this.playing = false; this.started = false; this.ended = false;
-    this.cc = true; this.narrate = false; this.speaking = false; this.speed = 1;
+    this.cc = true; this.narrate = narrPref(); this.speaking = false; this.speed = 1; this.aStarted = false;
     this.build();
     this.goto(0, true);
     this.poster();
@@ -84,9 +86,10 @@
     if (sc.type === 'flow') return 1.6;
     return 1;
   }
+  var LEAD = 0.3, TAIL = 0.8;   // seconds before a narration clip starts / after it ends
   function beatDur(sc, b) {
     if (b.d) return b.d;
-    var d = Math.max(3.4, words(b.cap) * 0.34 + 1.5);
+    var d = b.ad ? Math.max(3, LEAD + b.ad + TAIL) : Math.max(3.4, words(b.cap) * 0.34 + 1.5);
     if (b.pkt) d = Math.max(d, pktTime(b.pkt, sceneUnit(sc), sc.nodes && nodeMap(sc.nodes)) + 1.2);
     if (b.wait) d = Math.max(d, 1);
     return Math.round(d * 10) / 10;
@@ -123,7 +126,7 @@
     this.ov = el('div', 'lv-ov'); this.ov.hidden = true; this.stage.appendChild(this.ov);
 
     var bar = el('div', 'lv-bar'); h.appendChild(bar);
-    this.bPlay = btn(ICON.play, 'Play (Space)'); this.bPrev = btn(ICON.prev, 'Previous scene (Left arrow)'); this.bNext = btn(ICON.next, 'Next scene (Right arrow)');
+    this.bPlay = btn(ICON.play, 'Play (Space)'); this.bPrev = btn(ICON.prev, 'Previous scene'); this.bNext = btn(ICON.next, 'Next scene');
     this.track = el('div', 'lv-track'); this.track.setAttribute('role', 'slider'); this.track.setAttribute('aria-label', 'Seek');
     this.fill = el('div', 'lv-fill'); this.knob = el('div', 'lv-knob'); this.track.appendChild(this.fill);
     this.sceneStart.forEach(function (k, i) { if (i === 0) return; var tk = el('div', 'lv-tick'); tk.style.left = (self.beats[k].t0 / self.total * 100) + '%'; self.track.appendChild(tk); });
@@ -132,9 +135,8 @@
     this.sel = el('select', 'lv-sel'); this.sel.setAttribute('aria-label', 'Speed');
     [0.75, 1, 1.25, 1.5].forEach(function (s) { var o = el('option'); o.value = s; o.textContent = s + '\u00d7'; if (s === 1) o.selected = true; self.sel.appendChild(o); });
     this.bCC = btn('<span class="lv-cc">CC</span>', 'Captions (C)'); this.bCC.classList.add('on');
-    this.bVoice = btn(ICON.voice, 'Narration with your browser voice (N)');
+    this.bVoice = btn(ICON.voice, 'Narration on/off (N)'); this.bVoice.classList.toggle('on', this.narrate); this.bVoice.setAttribute('aria-pressed', String(this.narrate));
     this.bFull = btn(ICON.full, 'Full screen (F)');
-    if (!('speechSynthesis' in window)) { this.bVoice.disabled = true; this.bVoice.title = 'Narration is not supported in this browser'; }
     [this.bPlay, this.bPrev, this.bNext, this.track, this.time, this.sel, this.bCC, this.bVoice, this.bFull].forEach(function (x) { bar.appendChild(x); });
 
     var tr = el('details', 'lv-tr'); var sm = el('summary'); sm.textContent = 'Transcript (click a line to jump there)'; tr.appendChild(sm);
@@ -153,7 +155,7 @@
       for (var k = self.beats.length - 1; k >= 0; k--) if (self.beats[k].t0 <= t) { self.goto(k); break; }
       if (self.started) self.play();
     });
-    this.sel.addEventListener('change', function () { self.speed = parseFloat(self.sel.value) || 1; });
+    this.sel.addEventListener('change', function () { self.speed = parseFloat(self.sel.value) || 1; if (self.audio) self.audio.playbackRate = self.speed; });
     this.bCC.addEventListener('click', function () { self.toggleCC(); });
     this.bVoice.addEventListener('click', function () { self.toggleVoice(); });
     this.bFull.addEventListener('click', function () { self.fullscreen(); });
@@ -181,12 +183,13 @@
     if (!this.started) { this.started = true; this.goto(this.k < 0 ? 0 : this.k); }
     this.ov.hidden = true; this.hideInfo();
     this.playing = true; this.last = 0; this.bPlay.innerHTML = ICON.pause; this.bPlay.setAttribute('aria-label', 'Pause (Space)'); this.bPlay.title = 'Pause (Space)';
-    if (this.narrate) this.speak(this.beats[this.k].cap);
+    this.resumeNarration();
     cancelAnimationFrame(this.raf);
     this.raf = requestAnimationFrame(function (t) { self.loop(t); });
   };
   Player.prototype.pause = function () {
     this.playing = false; cancelAnimationFrame(this.raf); this.badge.classList.remove('hide');
+    if (this.audio) this.audio.pause();
     this.bPlay.innerHTML = ICON.play; this.bPlay.setAttribute('aria-label', 'Play (Space)'); this.bPlay.title = 'Play (Space)';
     this.stopSpeech();
   };
@@ -197,6 +200,7 @@
     var b = this.beats[this.k], sdt = dt * this.speed, guard = 0;
     if (this.rt && this.rt.tick) this.rt.tick(sdt);
     this.badgeT = (this.badgeT || 0) + sdt; this.badge.classList.toggle('hide', this.badgeT > 5);
+    if (DEBUG) this.debugState();
     if (!b.wait) {
       this.elT += sdt;
       while (this.elT >= b.d && guard++ < 400) {
@@ -210,6 +214,8 @@
         if (over > 0 && this.rt && this.rt.tick) this.rt.tick(over);
       }
     }
+    b = this.beats[this.k];
+    if (this.narrate && !this.aStarted) { var lead = b.wait ? 0 : LEAD; if (this.elT >= lead) this.startNarration(b, this.elT - lead); }
     this.updateBar();
     this.raf = requestAnimationFrame(function (t) { self.loop(t); });
   };
@@ -253,6 +259,7 @@
     this.hideInfo();
     if (this.ended && !initial) { this.ended = false; this.ov.hidden = true; }
     var rebuild = !this.rt || this.rt.si !== b.si || k <= this.k;
+    this.stopNarration();
     if (!this.rt || this.rt.si !== b.si) { this.badgeT = 0; this.badge.classList.remove('hide'); }
     if (rebuild) {
       this.rt = this.renderScene(b.si);
@@ -266,7 +273,6 @@
     this.renderChoices();
     var lis = this.trList.children;
     for (j = 0; j < lis.length; j++) lis[j].classList.toggle('cur', j === k);
-    if (this.narrate && this.playing) this.speak(b.cap);
     this.updateBar();
   };
   Player.prototype.updateBar = function () {
@@ -284,7 +290,89 @@
     else { var h = this.host; (h.requestFullscreen || h.webkitRequestFullscreen || function () {}).call(h); }
   };
 
-  /* ---------- narration (browser speech synthesis, no audio files) ---------- */
+  /* ---------- narration: recorded neural-voice clips per beat; the browser voice is only a fallback ---------- */
+  var NKEY = 'labvideo.narration';
+  function narrPref() { try { return window.localStorage.getItem(NKEY) !== 'off'; } catch (e) { return true; } }
+  function setNarrPref(on) { try { window.localStorage.setItem(NKEY, on ? 'on' : 'off'); } catch (e) { } }
+  Player.prototype.aud = function () {
+    if (this.audio) return this.audio;
+    var self = this, a = this.audio = new Audio(); a.preload = 'auto';
+    try { a.preservesPitch = true; } catch (e) { }
+    a.addEventListener('ended', function () { self.speaking = false; });
+    a.addEventListener('error', function () {   // clip failed to load: read this line with the browser voice instead
+      self.speaking = false;
+      var b = self.beats[self.k];
+      if (self.playing && self.narrate && b && b.au && a._src === asset(b.au) && self.elT < LEAD + 1.5) self.speak(b.say || b.cap);
+    });
+    return a;
+  };
+  Player.prototype.startNarration = function (b, off) {
+    this.aStarted = true;
+    if (b.au) {
+      if (off > b.ad - 0.15) return;
+      var self = this, a = this.aud(), src = asset(b.au), tok = this.aTok = (this.aTok || 0) + 1;
+      if (a._src !== src) { a._src = src; a.src = src; }
+      a.playbackRate = this.speed;
+      var seek = function () { try { a.currentTime = off; } catch (e) { } };
+      if (off > 0.05) { if (a.readyState >= 1) seek(); else a.addEventListener('loadedmetadata', seek, { once: true }); }
+      else if (a.currentTime > 0.05) { try { a.currentTime = 0; } catch (e) { } }
+      this.speaking = true;
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function (err) {
+        if (self.aTok !== tok) return;
+        self.speaking = false;
+        if (err && err.name === 'NotAllowedError') self.bVoice.classList.add('blocked');   // the browser wants a click first
+      });
+      this.preloadNext();
+    } else if (off < 0.6) this.speak(b.say || b.cap);
+  };
+  Player.prototype.debugState = function () {
+    if (!this.dbg) { this.dbg = el('div', 'lv-dbg'); this.stage.appendChild(this.dbg); }
+    var a = this.audio, src = a && a._src ? (a._src.slice(0, 5) === 'data:' ? 'data-uri' : a._src.split('/').slice(-2).join('/')) : '-';
+    this.dbg.textContent = 'beat ' + this.k + ' elT ' + this.elT.toFixed(1) + ' | narr ' + this.narrate + ' started ' + this.aStarted + ' speaking ' + this.speaking +
+      ' | clip ' + src + (a ? ' t ' + a.currentTime.toFixed(2) + ' paused ' + a.paused + ' ready ' + a.readyState + ' err ' + (a.error ? a.error.code : 0) : '') +
+      (this.bVoice.classList.contains('blocked') ? ' | BLOCKED' : '');
+  };
+  Player.prototype.preloadNext = function () {
+    var nb = this.beats[this.k + 1]; if (!nb || !nb.au) return;
+    if (!this.pre) { this.pre = new Audio(); this.pre.preload = 'auto'; }
+    var s = asset(nb.au); if (this.pre._src !== s) { this.pre._src = s; this.pre.src = s; }
+  };
+  Player.prototype.stopNarration = function () {
+    this.aTok = (this.aTok || 0) + 1; this.aStarted = false;
+    if (this.audio) this.audio.pause();
+    this.stopSpeech();
+  };
+  Player.prototype.resumeNarration = function () {
+    if (!this.narrate || !this.aStarted || !this.audio) return;
+    var b = this.beats[this.k], a = this.audio;
+    if (b && b.au && a._src === asset(b.au) && !a.ended) {
+      this.speaking = true; a.playbackRate = this.speed;
+      var self = this, pr = a.play(); if (pr && pr.catch) pr.catch(function () { self.speaking = false; });
+    }
+  };
+  Player.prototype.playClip = function (c, text) {
+    this.stopNarration(); this.aStarted = true;
+    if (c && c.src) {
+      var self = this, a = this.aud(), src = asset(c.src); a._src = src; a.src = src; a.playbackRate = this.speed;
+      this.speaking = true; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { self.speaking = false; });
+    } else this.speak(text);
+  };
+  Player.prototype.setNarrate = function (on) {
+    this.narrate = on; this.bVoice.classList.toggle('on', on); this.bVoice.setAttribute('aria-pressed', String(on));
+    this.bVoice.classList.remove('blocked');
+    if (!on) { this.stopNarration(); this.aStarted = true; return; }
+    // turning narration on: pick up the current line if it has only just started, otherwise wait for the next one
+    var b = this.beats[this.k], lead = b && b.wait ? 0 : LEAD;
+    this.aStarted = !(this.playing && b && this.elT - lead < 1.2);
+  };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', function () {
+    players.forEach(function (p) {
+      if (!p.audio) return;
+      if (document.hidden) { if (!p.audio.paused) { p.audio.pause(); p.visPaused = true; } }
+      else if (p.visPaused) { p.visPaused = false; if (p.playing && p.narrate) { var pr = p.audio.play(); if (pr && pr.catch) pr.catch(function () { }); } }
+    });
+  });
   var voice = null;
   function pickVoice() {
     if (!('speechSynthesis' in window)) return null;
@@ -297,9 +385,11 @@
   }
   if ('speechSynthesis' in window) { pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
   Player.prototype.toggleVoice = function () {
-    if (!('speechSynthesis' in window)) return;
-    this.narrate = !this.narrate; this.bVoice.classList.toggle('on', this.narrate);
-    if (this.narrate && this.playing) this.speak(this.beats[this.k].cap); else this.stopSpeech();
+    if (this.bVoice.classList.contains('blocked')) {   // sound was blocked: this click allows it, restart the current line
+      this.bVoice.classList.remove('blocked'); this.narrate = true; this.aStarted = false; return;
+    }
+    var on = !this.narrate; setNarrPref(on);
+    players.forEach(function (p) { p.setNarrate(on); });
   };
   Player.prototype.speak = function (text) {
     var self = this;
@@ -622,7 +712,7 @@
         fb.innerHTML = '<b>' + (i === sc.answer ? 'Correct. ' : 'Not quite. ') + '</b>' + rich(sc.explain);
         var c = el('button', 'lv-pbtn pri'); c.type = 'button'; c.textContent = 'Continue \u25B6'; fb.appendChild(el('br')); fb.appendChild(c);
         c.addEventListener('click', function (ev) { ev.stopPropagation(); self.goto(self.k + 1); if (!self.playing) self.play(); });
-        if (self.narrate) self.speak((i === sc.answer ? 'Correct. ' : 'Not quite. ') + sc.explain);
+        if (self.narrate) self.playClip(sc.fbau && sc.fbau[i === sc.answer ? 'right' : 'wrong'], (i === sc.answer ? 'Correct. ' : 'Not quite. ') + sc.explain);
         c.focus();
       });
       opts.appendChild(b);

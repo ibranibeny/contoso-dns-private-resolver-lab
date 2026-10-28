@@ -43,7 +43,7 @@
 .lv-cap span{display:inline-block;background:rgba(8,18,32,.86);color:#fff;font-size:clamp(12px,1.95cqw,25px);line-height:1.38;padding:.42em .85em;
   border-radius:8px;max-width:100%;box-shadow:0 2px 10px rgba(0,0,0,.25)}
 .lv-cap.off{opacity:0}
-.lv-cap code{font-family:Consolas,"Cascadia Mono",monospace;background:rgba(255,255,255,.16);padding:0 .3em;border-radius:4px;font-size:.92em}
+.lv-cap code{font-family:Consolas,"Cascadia Mono",monospace;background:rgba(255,255,255,.16);color:#fff;padding:0 .3em;border-radius:4px;font-size:.92em}
 .lv-info{position:absolute;inset-inline-end:2%;top:13%;width:min(44%,420px);background:#fff;color:var(--lv-navy);border-radius:10px;padding:.85em 1em .9em;
   box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:clamp(11px,1.45cqw,16px);line-height:1.42;border-top:4px solid var(--lv-blue)}
 .lv-info b{display:block;font-size:1.06em;margin-bottom:.25em}
@@ -82,7 +82,8 @@
 .lv-bul li.on{opacity:1;transform:none}
 .lv-bul li::before{content:"";position:absolute;inset-inline-start:0;top:.12em;width:1.45em;height:1.45em;border-radius:50%;background:var(--lv-amber)}
 .lv-bul li::after{content:"";position:absolute;inset-inline-start:.53em;top:.36em;width:.36em;height:.7em;border:solid #0B2B4C;border-width:0 .17em .17em 0;transform:rotate(45deg)}
-.lv-bul li code,.lv-quiz code{background:rgba(255,255,255,.14);padding:.05em .35em;border-radius:4px;font-family:Consolas,"Cascadia Mono",monospace;font-size:.92em}
+.lv-panel code{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);padding:.05em .35em;border-radius:4px;font-family:Consolas,"Cascadia Mono",monospace;font-size:.92em}
+.lv-quiz .opts button code{background:#E9EEF4;color:#0B2B4C;border-color:#C9D6E3}
 .lv-quiz h3{font-size:clamp(14px,2.7cqw,34px);margin:0 0 .9em;color:#fff;line-height:1.25}
 .lv-quiz .opts{display:flex;flex-direction:column;gap:1cqw}
 .lv-quiz .opts button{text-align:start;font:600 clamp(11px,1.85cqw,22px)/1.3 "Segoe UI",system-ui,sans-serif;color:#0B2B4C;background:#fff;border:3px solid transparent;
@@ -116,6 +117,8 @@
 .lv-btn:hover,.lv-btn:focus-visible{background:rgba(255,255,255,.14);outline:none}
 .lv-btn.on{color:var(--lv-amber)}
 .lv-btn[disabled]{opacity:.35;cursor:not-allowed}
+.lv-btn.blocked{background:rgba(255,185,0,.28);box-shadow:0 0 0 2px var(--lv-amber);animation:lvblk 1.2s ease-in-out infinite}
+@keyframes lvblk{50%{box-shadow:0 0 0 5px rgba(255,185,0,.35)}}
 .lv-track{flex:1;position:relative;height:8px;background:rgba(255,255,255,.18);border-radius:4px;cursor:pointer;margin:0 .35rem}
 .lv-fill{position:absolute;left:0;top:0;bottom:0;background:var(--lv-blue);border-radius:4px}
 .lv-knob{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(0,120,212,.6)}
@@ -146,3 +149,4 @@
 .lv-embed-h{display:flex;align-items:center;gap:.5rem;font-weight:700;color:#0B2B4C;margin:.8rem 0 -.4rem;font-size:.95rem}
 .lv-embed-h::before{content:"";width:.6rem;height:.6rem;border-radius:50%;background:#0078D4}
 @media (max-width:980px){.lv-page{grid-template-columns:1fr}.lv-list{max-height:none}}
+.lv-dbg{position:absolute;left:0;right:0;top:0;z-index:50;font:11px/1.3 Consolas,monospace;background:rgba(0,0,0,.72);color:#7CFC00;padding:2px 6px;pointer-events:none}
