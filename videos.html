@@ -4,7 +4,7 @@
 <title>Video walkthrough: Hybrid DNS lab with Azure DNS Private Resolver</title>
 <meta name="description" content="Interactive videos for every step of the hybrid DNS lab: Azure DNS Private Resolver, site-to-site VPN, Private Endpoint DNS and domain join.">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/video/player.css?v=48bc4414">
+<link rel="stylesheet" href="assets/video/player.css?v=b84831ce">
 <style>
 .vpage{max-width:1400px;margin:0 auto;padding:1.4rem 2rem 3rem}
 .vpage h1{margin:.2rem 0 .4rem}
@@ -26,16 +26,17 @@ Watch the DNS queries travel across the architecture, pause to click any compone
 <div class="lv-page"><div id="lv-main"></div><nav class="lv-list" id="lv-list" aria-label="Videos"></nav></div>
 <p class="keys">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> previous/next caption · <kbd>C</kbd> captions · <kbd>N</kbd> narration · <kbd>F</kbd> full screen.</p>
 </main>
-<script src="assets/video/videos.js?v=bd63ad62"></script>
-<script src="assets/video/player.js?v=a2a8baa2"></script>
+<script src="assets/video/videos.js?v=1140013c"></script>
+<script src="assets/video/player.js?v=57ea14eb"></script>
 <script>
 (function () {
   var D = window.LAB_VIDEO_DATA, list = document.getElementById('lv-list'), host = document.getElementById('lv-main'),
-      auto = document.getElementById('lv-auto'), items = {}, cur = null;
+      auto = document.getElementById('lv-auto'), items = {}, cur = null, curP = null;
   function nextOf(id) { for (var i = 0; i < D.videos.length - 1; i++) if (D.videos[i].id === id) return D.videos[i + 1]; return null; }
   function load(id, play) {
+    if (curP && curP.playing) curP.pause();
     cur = id; host.innerHTML = ''; var div = document.createElement('div'); host.appendChild(div);
-    var p = window.LabVideo.mount(div, id, {
+    var p = curP = window.LabVideo.mount(div, id, {
       next: nextOf,
       onNext: function (nid) { load(nid, true); },
       onEnd: function (eid) { if (auto.checked) { var n = nextOf(eid); if (n) setTimeout(function () { if (cur === eid) load(n.id, true); }, 1800); } }
@@ -58,6 +59,7 @@ Watch the DNS queries travel across the architecture, pause to click any compone
   document.getElementById('lv-total').textContent = window.LabVideo.fmt(total);
   var start = (location.hash || '').slice(1);
   load(items[start] ? start : D.videos[0].id, false);
+  window.addEventListener('hashchange', function () { var h = (location.hash || '').slice(1); if (items[h] && h !== cur) load(h, false); });
 })();
 </script>
 </body></html>
