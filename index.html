@@ -13,7 +13,7 @@
   <div class="kicker">STEP-BY-STEP LAB · L400</div>
   <h1>Replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
   <p class="lead">A working simulation of the hybrid target design. The "on-prem" site runs in <b>Indonesia Central</b> (an AD DS + DNS server and a VPN gateway). Azure runs in <b>Southeast Asia</b> as hub-spoke (a VPN gateway and DNS Private Resolver in the hub, a VM and a Private Endpoint in the spoke). A <b>site-to-site IPsec VPN</b> connects the two, standing in for ExpressRoute.</p>
-  <div class="callout pending"><div class="callout-h">Lab run in progress</div><div>The lab is being deployed and tested in Azure now. Each step's screenshot and captured output replace the placeholder and the <i>Expected result</i> box as that step completes.</div></div>
+  <div class="callout note"><div class="callout-h">Lab run completed</div><div>Every screenshot and captured output on this page comes from a real run on 28 Oct 2026. Captured outputs are text copies of the screenshots; subscription names and IDs are masked.</div></div>
   <div class="chips"><span>Infrastructure as code: Bicep (subscription scope)</span><span>Time: about 90 minutes (mostly waiting for the gateways)</span><span>Cost: about USD 0.92/hour plus 2 VMs while running</span><span>Proves: AD forwarding, domain join, Private Endpoint from on-prem</span></div>
   <figure class="diagram"><a href="assets/img/diagrams/lab-architecture.png" target="_blank" rel="noopener"><img src="assets/img/diagrams/lab-architecture.png" alt="Lab architecture with official Azure icons"></a>
   <figcaption>Lab architecture, drawn with the official Azure Architecture Icons.</figcaption></figure>
@@ -24,7 +24,7 @@
 </section>
 
 <section id="mapping"><h2>How the lab maps to the production design</h2>
-<table class="grid"><thead><tr><th>Production target design</th><th>This lab</th></tr></thead><tbody><tr><td>On-prem data centre: AD DC + Windows AD DNS</td><td>vnet-onprem-idc (Indonesia Central) with vm-onprem-dc01: AD DS + DNS for contoso.org and contoso.com</td></tr><tr><td>ExpressRoute private peering</td><td>Site-to-site IPsec VPN, VpnGw1AZ ⇄ VpnGw1AZ (same DNS behaviour; only the transport differs)</td></tr><tr><td>Hub VNet with AD 1 / AD 2 as the first rule targets</td><td>No DCs in the lab hub. Rules target the on-prem DC, the production backup target, so the lab tests the hardest path: resolver → VPN → on-prem</td></tr><tr><td>Hub VNet DNS = the AD DCs</td><td>Hub VNet DNS = Azure-provided (the lab hub has no DCs; never the inbound endpoint)</td></tr><tr><td>Spoke VNets: DNS = inbound endpoint</td><td>Same: vnet-spoke-sea uses 10.20.0.4</td></tr><tr><td>Private DNS zones linked to the hub</td><td>Same, shown with privatelink.blob.core.windows.net (plus fallback to internet, per the VPN Gateway FAQ)</td></tr><tr><td>Ruleset contoso.org. / contoso.com. → AD</td><td>Same rules, target 10.10.1.4:53, ruleset linked to the hub only</td></tr><tr><td>On-prem conditional forwarders → inbound IP (AD-integrated, Forest)</td><td>Same, on dc01, with both the privatelink zone (Option A) and the public zone (Option B) tested</td></tr><tr><td>DNS1 / DNS2 forwarder VMs</td><td>Not deployed. The lab starts in the target state.</td></tr></tbody></table>
+<table class="grid"><thead><tr><th>Production target design</th><th>This lab</th></tr></thead><tbody><tr><td>On-prem data centre: AD DC + Windows AD DNS</td><td>vnet-onprem-idc (Indonesia Central) with vm-onprem-dc01: AD DS + DNS for contoso.org and contoso.com</td></tr><tr><td>ExpressRoute private peering</td><td>Site-to-site IPsec VPN, VpnGw1AZ ⇄ VpnGw1AZ (same DNS behaviour; only the transport differs)</td></tr><tr><td>Hub VNet with AD 1 / AD 2 as the first rule targets</td><td>No DCs in the lab hub. Rules target the on-prem DC, the production backup target, so the lab tests the hardest path: resolver → VPN → on-prem</td></tr><tr><td>Hub VNet DNS = the AD DCs</td><td>Hub VNet DNS = Azure-provided (the lab hub has no DCs; never the inbound endpoint)</td></tr><tr><td>Spoke VNets: DNS = inbound endpoint</td><td>Same: vnet-spoke-sea uses 10.20.0.4</td></tr><tr><td>Private DNS zones linked to the hub</td><td>Same, shown with privatelink.blob.core.windows.net (plus fallback to internet, per the VPN Gateway FAQ)</td></tr><tr><td>Ruleset contoso.org. / contoso.com. → AD</td><td>Same rules, target 10.10.1.4:53, ruleset linked to the hub only</td></tr><tr><td>On-prem conditional forwarders → inbound IP (AD-integrated, Forest)</td><td>Same, on dc01, with both the privatelink zone (Option A) and the public zone (Option B) tested. Only Option B returned the private IP in this lab</td></tr><tr><td>DNS1 / DNS2 forwarder VMs</td><td>Not deployed. The lab starts in the target state.</td></tr></tbody></table>
 <p class="small">The lab uses its own address ranges (10.10.0.0/16, 10.20.0.0/16, 10.21.0.0/16) and is not connected to any customer network.</p></section>
 
 <section id="before"><h2>Before you start</h2>
@@ -46,23 +46,31 @@
   <div class="step-h"><span class="badge">0</span><div><h2>Open Cloud Shell, clone the repo, run the pre-flight check</h2>
   <div class="meta"><span>Cloud Shell (Bash)</span><span>Time: 5 min</span></div></div></div>
   <p class="why">Every step runs from <b>Azure Cloud Shell (Bash)</b>, which already has the Azure CLI and Bicep. The pre-flight script upgrades Bicep, checks the resource providers and checks that the VM size is offered in <b>both</b> regions. It also generates the lab secrets once (VM admin password and VPN pre-shared key) into <code>~/.dnslab</code>, mode 600, never printed.</p>
+  
   <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">git clone https://github.com/ibranibeny/contoso-dns-private-resolver-lab.git
 cd contoso-dns-private-resolver-lab/scripts
-./00-preflight.sh</code></pre></div>
+git config core.fileMode false   # GitHub stores the scripts without the executable bit
+bash ./00-preflight.sh</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>Pre-flight check in Cloud Shell</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Azure CLI      : 2.7x.x
-Bicep          : Bicep CLI version 0.3x.x
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s00-preflight.png" target="_blank" rel="noopener"><img src="assets/img/screens/s00-preflight.png" alt="Pre-flight check in Cloud Shell" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>Pre-flight check in Cloud Shell</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>Azure CLI      : 2.90.0   (needs 2.75.0 or later for az dns-resolver)
+Installing Bicep CLI v0.48.1...
+Successfully installed Bicep CLI to &quot;/home/bibrani/.azure/bin/bicep&quot;.
+Bicep          : Bicep CLI version 0.48.1 (cec7951cf6)
 Provider       : Microsoft.Network = Registered
-VM size        : Standard_D2s_v5 in indonesiacentral = Standard_D2s_v5
-VM size        : Standard_D2s_v5 in southeastasia = Standard_D2s_v5</pre></div>
-  <div class="callout note"><div class="callout-h">Note</div><div>If a VM size is not offered in a region, run <code>export VM_SIZE=&lt;size&gt;</code> and run the check again. main.bicepparam reads the same variable.</div></div>
+Provider       : Microsoft.Compute = Registered
+Provider       : Microsoft.Storage = Registered
+VM size        : Standard_D2s_v5 in indonesiacentral = available
+VM size        : Standard_D2s_v5 in southeastasia = available (restricted only in zone(s) 1; the lab VMs are not zonal)
+dns-resolver   : extension 1.2.0</pre></div>
+  <div class="callout note"><div class="callout-h">Note</div><div>Real-run finding: in Southeast Asia this subscription had <code>NotAvailableForSubscription</code> for Standard_D2s_v5 in <b>zone 1 only</b>. That is a <i>Zone</i> restriction; the lab VMs are regional (no zone pinned), so it does not block them. The check reports only <i>Location</i> restrictions as blocking. If a size really is unavailable, run <code>export VM_SIZE=&lt;size&gt;</code> and run the check again. main.bicepparam reads the same variable.</div></div>
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/cli/azure/dns-resolver" target="_blank" rel="noopener">az dns-resolver (CLI reference)</a></li></ul></div>
 </section>
 <section class="step" id="s01">
   <div class="step-h"><span class="badge">1</span><div><h2>The Bicep templates</h2>
   <div class="meta"><span>GitHub · /infra</span><span>Time: 5 min</span></div></div></div>
   <p class="why"><code>main.bicep</code> runs at <b>subscription scope</b>. It creates both resource groups, deploys the two gateway public IPs first (each site's local network gateway needs the <i>other</i> site's address), then deploys the two site modules in parallel. Secrets never sit in a file: <code>main.bicepparam</code> reads them with <code>readEnvironmentVariable()</code>.</p>
+  
   <div class="code"><div class="code-title">infra/main.bicepparam</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">// Parameters for main.bicep. Secrets are read from environment variables that
 // scripts/00-variables.sh exports from ~/.dnslab (generated once, never printed).
 using &#x27;./main.bicep&#x27;
@@ -81,7 +89,7 @@ param vpnSharedKey = readEnvironmentVariable(&#x27;VPN_PSK&#x27;)</code></pre></
     onprem.bicep                Indonesia Central: VNet, VPN gateway, LNG, connection, dc01 (+ NTDS data disk)
     azure.bicep                 Southeast Asia: hub + spoke, VPN gateway, LNG, connection, peering,
                                 DNS Private Resolver, ruleset + rules, private DNS zone, storage + PE, app01</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>GitHub · captured during the lab run</small></div><figcaption><span class="where">GitHub</span>The Bicep templates in the repository</figcaption></figure></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s01-bicep-repo.png" target="_blank" rel="noopener"><img src="assets/img/screens/s01-bicep-repo.png" alt="The Bicep templates in the repository" loading="lazy"></a><figcaption><span class="where">GitHub</span>The Bicep templates in the repository</figcaption></figure></div>
   <div class="out expected"><div class="out-h">Expected result</div><pre>(no command output: review the templates)</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li></ul></div>
@@ -90,7 +98,8 @@ param vpnSharedKey = readEnvironmentVariable(&#x27;VPN_PSK&#x27;)</code></pre></
   <div class="step-h"><span class="badge">2</span><div><h2>Preview with what-if, then deploy</h2>
   <div class="meta"><span>Cloud Shell</span><span>Time: 3 min</span></div></div></div>
   <p class="why"><code>az deployment sub what-if</code> lists every resource the template will create, before anything is created. The deployment then runs in Azure with <code>--no-wait</code>, so it carries on if Cloud Shell times out. It takes about 50-60 minutes: the two VPN gateways (about 45 minutes each, in parallel) are the long pole.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./01-deploy-infra.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/01-deploy-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 1: build, preview (what-if) and deploy the whole lab with Bicep.
 # The deployment takes about 50-60 minutes (the two VPN gateways take ~45 minutes in parallel).
 source ./00-variables.sh
@@ -106,15 +115,12 @@ az deployment sub create -n &quot;$DEPLOYMENT&quot; -l &quot;$LOC_AZ&quot; -p ma
 echo &quot;Started. Follow it in the portal: Subscriptions &gt; your subscription &gt; Deployments &gt; $DEPLOYMENT,&quot;
 echo &quot;or run ./02-wait-infra.sh&quot;</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>what-if: the resources the deployment will create</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Subscription deployment &quot;dnslab&quot; running: modules for both sites in parallel</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Bicep build: OK
---- what-if (resource changes only) ---
-  + .../resourceGroups/rg-dnslab-onprem-idc
-  + .../resourceGroups/rg-dnslab-azure-sea
-  + .../virtualNetworkGateways/vpngw-hub-sea
-  + .../dnsResolvers/dnspr-hub-sea
-  ...
-Resource changes: 3x to create.</pre></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s02-whatif.png" target="_blank" rel="noopener"><img src="assets/img/screens/s02-whatif.png" alt="what-if: the resources the deployment will create" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>what-if: the resources the deployment will create</figcaption></figure><figure class="shot"><a href="assets/img/screens/s02-deployment-portal.png" target="_blank" rel="noopener"><img src="assets/img/screens/s02-deployment-portal.png" alt="Subscription deployment &quot;dnslab&quot; in the portal: the site modules ran in parallel" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Subscription deployment &quot;dnslab&quot; in the portal: the site modules ran in parallel</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>...
+Resource changes: 31 to create.
+--- deploy (runs in Azure; safe to close Cloud Shell) ---
+Started. Follow it in the portal: Subscriptions &gt; your subscription &gt; Deployments &gt; dnslab,
+or run ./02-wait-infra.sh</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/vpn-gateway/gateway-sku-consolidation" target="_blank" rel="noopener">VPN Gateway SKU consolidation (AZ SKUs)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli" target="_blank" rel="noopener">Site-to-site VPN with Azure CLI</a></li></ul></div>
 </section>
@@ -122,7 +128,8 @@ Resource changes: 3x to create.</pre></div>
   <div class="step-h"><span class="badge">3</span><div><h2>Wait for the deployment and read its outputs</h2>
   <div class="meta"><span>Cloud Shell / Azure portal</span><span>Time: 45-55 min</span></div></div></div>
   <p class="why">The script polls the deployment state every minute, then lists each module's duration and the outputs: both gateway public IPs, the inbound endpoint IP and the generated storage account name.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./02-wait-infra.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/02-wait-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 2: wait for the Bicep deployment, then show its outputs. Re-run any time; it only reads state.
 source ./00-variables.sh
 while :; do
@@ -135,12 +142,12 @@ az deployment operation sub list -n &quot;$DEPLOYMENT&quot; \
   --query &quot;[].{Module:properties.targetResource.resourceName, State:properties.provisioningState, Duration:properties.duration}&quot; -o table
 az deployment sub show -n &quot;$DEPLOYMENT&quot; --query &quot;properties.outputs.{onpremGatewayIp:onpremGatewayIp.value, azureGatewayIp:azureGatewayIp.value, inboundEndpointIp:inboundEndpointIp.value, storageAccount:storageAccountName.value}&quot; -o table</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Deployment succeeded: per-module durations and outputs</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>10:41:00  dnslab: Running
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s03-deployment-succeeded.png" target="_blank" rel="noopener"><img src="assets/img/screens/s03-deployment-succeeded.png" alt="Deployment succeeded: per-module durations and outputs" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>Deployment succeeded: per-module durations and outputs</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>11:11:52  dnslab: Succeeded
 ...
-11:32:00  dnslab: Succeeded
-onpremGatewayIp  azureGatewayIp  inboundEndpointIp  storageAccount
-20.x.x.x         20.x.x.x        10.20.0.4          stdnslabxxxxxxxxxxxxx</pre></div>
+OnpremGatewayIp  AzureGatewayIp   InboundEndpointIp  StorageAccount
+---------------  ---------------  -----------------  ---------------------
+70.153.107.169   135.171.156.190  10.20.0.4          stdnslabweuqgyzgvmxkg</pre></div>
   
   
 </section>
@@ -148,6 +155,7 @@ onpremGatewayIp  azureGatewayIp  inboundEndpointIp  storageAccount
   <div class="step-h"><span class="badge">4</span><div><h2>What Bicep built: networks and peering</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">Each resolver endpoint gets its <b>own</b> subnet, <b>/28 to /24</b>, delegated to <code>Microsoft.Network/dnsResolvers</code>. The spoke VNet uses the inbound endpoint (10.20.0.4) as its DNS server. The hub keeps Azure-provided DNS, because a VNet must never use its own resolver's inbound endpoint. The peering has <b>gateway transit</b> on the hub side and <b>use remote gateways</b> on the spoke side, and is created only after the hub gateway exists.</p>
+  
   <div class="code"><div class="code-title">infra/modules/azure.bicep (network, peering)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">// Hub DNS stays Azure-provided: never point the resolver&#x27;s own VNet at its inbound endpoint (Microsoft Learn).
 resource hub &#x27;Microsoft.Network/virtualNetworks@2024-05-01&#x27; = {
   name: &#x27;vnet-hub-sea&#x27;
@@ -269,11 +277,18 @@ resource peerSpokeToHub &#x27;Microsoft.Network/virtualNetworks/virtualNetworkPe
   ]
 }</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>vnet-hub-sea subnets: GatewaySubnet plus the two /28 subnets delegated to Microsoft.Network/dnsResolvers</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Hub ↔ spoke peering: Connected, gateway transit</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Subnet               Prefix          Delegation
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s04-hub-subnets.png" target="_blank" rel="noopener"><img src="assets/img/screens/s04-hub-subnets.png" alt="vnet-hub-sea subnets: GatewaySubnet plus the two /28 resolver subnets" loading="lazy"></a><figcaption><span class="where">Azure portal</span>vnet-hub-sea subnets: GatewaySubnet plus the two /28 resolver subnets</figcaption></figure><figure class="shot"><a href="assets/img/screens/s04-delegation.png" target="_blank" rel="noopener"><img src="assets/img/screens/s04-delegation.png" alt="snet-dnspr-inbound: /28 (10.20.0.0 - 10.20.0.15), delegated to Microsoft.Network/dnsResolvers" loading="lazy"></a><figcaption><span class="where">Azure portal</span>snet-dnspr-inbound: /28 (10.20.0.0 - 10.20.0.15), delegated to Microsoft.Network/dnsResolvers</figcaption></figure><figure class="shot"><a href="assets/img/screens/s04-peering.png" target="_blank" rel="noopener"><img src="assets/img/screens/s04-peering.png" alt="Hub ↔ spoke peering: Connected, fully synchronized (gateway transit and remote gateways: see the read-back in step 8)" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Hub ↔ spoke peering: Connected, fully synchronized (gateway transit and remote gateways: see the read-back in step 8)</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Subnet               Prefix          Delegation
+-------------------  --------------  ------------------------------
 GatewaySubnet        10.20.255.0/27
 snet-dnspr-inbound   10.20.0.0/28    Microsoft.Network/dnsResolvers
-snet-dnspr-outbound  10.20.0.16/28   Microsoft.Network/dnsResolvers</pre></div>
+snet-dnspr-outbound  10.20.0.16/28   Microsoft.Network/dnsResolvers
+Peering            State      GatewayTransit
+-----------------  ---------  --------------
+peer-hub-to-spoke  Connected  True
+Peering            State      UseRemoteGateways
+-----------------  ---------  -----------------
+peer-spoke-to-hub  Connected  True</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-architecture" target="_blank" rel="noopener">Private resolver architecture</a></li><li><a href="https://learn.microsoft.com/cli/azure/network/vnet/peering" target="_blank" rel="noopener">az network vnet peering</a></li></ul></div>
 </section>
@@ -281,6 +296,7 @@ snet-dnspr-outbound  10.20.0.16/28   Microsoft.Network/dnsResolvers</pre></div>
   <div class="step-h"><span class="badge">5</span><div><h2>What Bicep built: site-to-site VPN</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
   <p class="why">New VPN gateways must use the zone-redundant <b>AZ SKUs</b>, here <code>VpnGw1AZ</code>, with a <b>Standard</b> zone-redundant public IP. Each site has a <b>local network gateway</b> describing the other site and an IPsec/IKEv2 <b>connection</b> with the same pre-shared key. The on-prem side lists the hub <b>and</b> spoke ranges, so replies to the resolver's outbound endpoint and to the spoke VM come back through the tunnel.</p>
+  
   <div class="code"><div class="code-title">infra/modules/azure.bicep (vpn)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource gw &#x27;Microsoft.Network/virtualNetworkGateways@2024-05-01&#x27; = {
   name: &#x27;vpngw-hub-sea&#x27;
   location: location
@@ -345,10 +361,10 @@ resource cn &#x27;Microsoft.Network/connections@2024-05-01&#x27; = {
   }
 }</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>cn-hub-to-onprem: Connected (IPsec, IKEv2)</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Connection        Status     Type   Protocol
-cn-hub-to-onprem  Connected  IPsec  IKEv2
-cn-onprem-to-hub  Connected  IPsec  IKEv2</pre></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s05-connections.png" target="_blank" rel="noopener"><img src="assets/img/screens/s05-connections.png" alt="cn-hub-to-onprem: Connected, with traffic in both directions (subscription details masked)" loading="lazy"></a><figcaption><span class="where">Azure portal</span>cn-hub-to-onprem: Connected, with traffic in both directions (subscription details masked)</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Connection         Status     Type   Protocol
+cn-hub-to-onprem   Connected  IPsec  IKEv2
+cn-onprem-to-hub   Connected  IPsec  IKEv2</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/vpn-gateway/gateway-sku-consolidation" target="_blank" rel="noopener">VPN Gateway SKU consolidation (AZ SKUs)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli" target="_blank" rel="noopener">Site-to-site VPN with Azure CLI</a></li></ul></div>
 </section>
@@ -356,6 +372,7 @@ cn-onprem-to-hub  Connected  IPsec  IKEv2</pre></div>
   <div class="step-h"><span class="badge">6</span><div><h2>What Bicep built: DNS Private Resolver, ruleset and rules</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">The <b>inbound endpoint</b> (static 10.20.0.4) is the DNS server for the spoke and the target of the on-prem forwarders. The <b>outbound endpoint</b> plus the <b>ruleset</b> send <code>contoso.org.</code> and <code>contoso.com.</code> to the DC. Longest-suffix matching means <code>_msdcs</code>, <code>_sites</code> and <code>_tcp</code> are covered too. The ruleset is linked to the <b>hub only</b>: spoke queries reach it through the inbound endpoint, in the hub context.</p>
+  
   <div class="code"><div class="code-title">infra/modules/azure.bicep (resolver)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource resolver &#x27;Microsoft.Network/dnsResolvers@2022-07-01&#x27; = {
   name: &#x27;dnspr-hub-sea&#x27;
   location: location
@@ -437,13 +454,16 @@ resource rulesetHubLink &#x27;Microsoft.Network/dnsForwardingRulesets/virtualNet
   }
 }</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Inbound endpoint in-hub-sea: static IP 10.20.0.4</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Forwarding rules: contoso.org. and contoso.com. → 10.10.1.4:53</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Ruleset virtual network link: vnet-hub-sea only</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Inbound     IP         Allocation
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s06-inbound.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-inbound.png" alt="Inbound endpoint in-hub-sea: static IP 10.20.0.4" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Inbound endpoint in-hub-sea: static IP 10.20.0.4</figcaption></figure><figure class="shot"><a href="assets/img/screens/s06-rules.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-rules.png" alt="Forwarding rules: contoso.org. and contoso.com. → 10.10.1.4:53" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Forwarding rules: contoso.org. and contoso.com. → 10.10.1.4:53</figcaption></figure><figure class="shot"><a href="assets/img/screens/s06-links.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-links.png" alt="Ruleset virtual network link: vnet-hub-sea only" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Ruleset virtual network link: vnet-hub-sea only</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Inbound     IP         Allocation
+----------  ---------  ----------
 in-hub-sea  10.20.0.4  Static
-
-Rule            Domain           Target     State
+Rule         Domain        Target     State
+-----------  ------------  ---------  -------
 contoso-com  contoso.com.  10.10.1.4  Enabled
-contoso-org  contoso.org.  10.10.1.4  Enabled</pre></div>
+contoso-org  contoso.org.  10.10.1.4  Enabled
+RulesetLink  VNet
+link-hub     vnet-hub-sea</pre></div>
   <div class="callout note"><div class="callout-h">Note</div><div>Loop rule from Microsoft Learn: never forward a rule to an inbound endpoint while the ruleset is linked to that endpoint's VNet, and never set the hub (the resolver's own VNet) to use its inbound endpoint as DNS.</div></div>
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-endpoints-rulesets" target="_blank" rel="noopener">Endpoints and rulesets</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-architecture" target="_blank" rel="noopener">Private resolver architecture</a></li></ul></div>
 </section>
@@ -451,6 +471,7 @@ contoso-org  contoso.org.  10.10.1.4  Enabled</pre></div>
   <div class="step-h"><span class="badge">7</span><div><h2>What Bicep built: Private Endpoint and the private DNS zone</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
   <p class="why"><code>privatelink.blob.core.windows.net</code> is linked to the <b>hub</b>, where the resolver lives. The Private Endpoint's DNS zone group writes the A record. The hub link has <b>fallback to internet</b> (<code>NxDomainRedirect</code>), because the VPN Gateway FAQ asks for it when this zone is linked to a VNet that hosts a VPN gateway: the gateway needs Blob Storage endpoints. The storage account has public network access disabled.</p>
+  
   <div class="code"><div class="code-title">infra/modules/azure.bicep (privatelink)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource blobZone &#x27;Microsoft.Network/privateDnsZones@2024-06-01&#x27; = {
   name: blobZoneName
   location: &#x27;global&#x27;
@@ -527,11 +548,12 @@ resource peZoneGroup &#x27;Microsoft.Network/privateEndpoints/privateDnsZoneGrou
   }
 }</code></pre></div>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Private DNS zone: the storage account&#x27;s A record points to the Private Endpoint IP</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>Zone link to vnet-hub-sea with fallback to internet enabled</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Record                 IP
-stdnslabxxxxxxxxxxxxx  10.21.2.4
-
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s07-pdz-records.png" target="_blank" rel="noopener"><img src="assets/img/screens/s07-pdz-records.png" alt="Private DNS zone: the storage account&#x27;s A record points to the Private Endpoint IP" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Private DNS zone: the storage account&#x27;s A record points to the Private Endpoint IP</figcaption></figure><figure class="shot"><a href="assets/img/screens/s07-pdz-links.png" target="_blank" rel="noopener"><img src="assets/img/screens/s07-pdz-links.png" alt="Zone link to vnet-hub-sea with fallback to internet enabled" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Zone link to vnet-hub-sea with fallback to internet enabled</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Record                 IP
+---------------------  ---------
+stdnslabweuqgyzgvmxkg  10.21.2.4
 Link      AutoRegistration  ResolutionPolicy  State
+--------  ----------------  ----------------  ---------
 link-hub  False             NxDomainRedirect  Completed</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns" target="_blank" rel="noopener">Private endpoint DNS zone values</a></li><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns-integration" target="_blank" rel="noopener">Private endpoint DNS integration</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-dns-fallback" target="_blank" rel="noopener">Fallback to internet for Private DNS zones</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-vpn-faq" target="_blank" rel="noopener">VPN Gateway FAQ (custom DNS, private DNS zones)</a></li></ul></div>
@@ -540,29 +562,36 @@ link-hub  False             NxDomainRedirect  Completed</pre></div>
   <div class="step-h"><span class="badge">8</span><div><h2>What Bicep built: the VMs and their DNS settings</h2>
   <div class="meta"><span>Cloud Shell + Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">Both VMs have a <b>static private IP</b> (Microsoft recommends this for domain controllers) and <b>no public IP</b>, so in-guest work goes through Run Command. dc01 keeps its AD DS database on a data disk with host caching <b>None</b>. The on-prem VNet keeps Azure-provided DNS, because it hosts a VPN gateway and the VPN Gateway FAQ recommends Azure DNS there. dc01's <b>NIC</b> points at itself instead, which overrides the VNet setting. The VM subnets keep default outbound access so Run Command can return its output (a lab shortcut).</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
-# Step 3: read back what Bicep built: networks, VPN, peering, resolver, private DNS, VMs.
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./03-verify-infra.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/03-verify-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+# Step 3: read back what Bicep built: networks, VPN, peering, resolver, private DNS, VMs (lab resource groups only).
 source ./00-variables.sh
 echo &quot;== VNets and DNS servers ==&quot;
-az network vnet list --query &quot;[?starts_with(name,&#x27;vnet-&#x27;)].{VNet:name, Region:location, Prefix:join(&#x27;,&#x27;,addressSpace.addressPrefixes), DNS:join(&#x27;,&#x27;,dhcpOptions.dnsServers || [&#x27;Azure-provided&#x27;])}&quot; -o table
+for rg in &quot;$RG_ONP&quot; &quot;$RG_AZ&quot;; do
+  az network vnet list -g &quot;$rg&quot; --query &quot;[].{VNet:name, Region:location, Prefix:join(&#x27;,&#x27;,addressSpace.addressPrefixes), DNS:join(&#x27;,&#x27;,dhcpOptions.dnsServers || [&#x27;Azure-provided&#x27;])}&quot; -o tsv
+done | awk -F&#x27;\t&#x27; &#x27;BEGIN{printf &quot;%-16s %-18s %-14s %s\n&quot;,&quot;VNet&quot;,&quot;Region&quot;,&quot;Prefix&quot;,&quot;DNS servers&quot;} {printf &quot;%-16s %-18s %-14s %s\n&quot;,$1,$2,$3,$4}&#x27;
 echo &quot;== Delegated resolver subnets ==&quot;
 az network vnet subnet list -g &quot;$RG_AZ&quot; --vnet-name vnet-hub-sea --query &quot;[].{Subnet:name, Prefix:addressPrefix, Delegation:join(&#x27;,&#x27;,delegations[].serviceName)}&quot; -o table
 echo &quot;== Site-to-site connections ==&quot;
-for rg in &quot;$RG_AZ&quot; &quot;$RG_ONP&quot;; do
-  az network vpn-connection list -g &quot;$rg&quot; --query &quot;[].{Connection:name, Status:connectionStatus, Type:connectionType, Protocol:connectionProtocol}&quot; -o table
-done
+for c in &quot;$RG_AZ cn-hub-to-onprem&quot; &quot;$RG_ONP cn-onprem-to-hub&quot;; do
+  set -- $c
+  az network vpn-connection show -g &quot;$1&quot; -n &quot;$2&quot; --query &quot;[[name, connectionStatus, connectionType, connectionProtocol]]&quot; -o tsv
+done | awk -F&#x27;\t&#x27; &#x27;BEGIN{printf &quot;%-18s %-10s %-6s %s\n&quot;,&quot;Connection&quot;,&quot;Status&quot;,&quot;Type&quot;,&quot;Protocol&quot;} {printf &quot;%-18s %-10s %-6s %s\n&quot;,$1,$2,$3,$4}&#x27;
 echo &quot;== Peering ==&quot;
 az network vnet peering list -g &quot;$RG_AZ&quot; --vnet-name vnet-hub-sea   --query &quot;[].{Peering:name, State:peeringState, GatewayTransit:allowGatewayTransit}&quot; -o table
 az network vnet peering list -g &quot;$RG_AZ&quot; --vnet-name vnet-spoke-sea --query &quot;[].{Peering:name, State:peeringState, UseRemoteGateways:useRemoteGateways}&quot; -o table
 echo &quot;== DNS Private Resolver ==&quot;
 az dns-resolver inbound-endpoint list -g &quot;$RG_AZ&quot; --dns-resolver-name dnspr-hub-sea --query &quot;[].{Inbound:name, IP:ipConfigurations[0].privateIpAddress, Allocation:ipConfigurations[0].privateIpAllocationMethod}&quot; -o table
 az dns-resolver forwarding-rule list -g &quot;$RG_AZ&quot; --ruleset-name dnsfrs-hub-sea --query &quot;[].{Rule:name, Domain:domainName, Target:join(&#x27;,&#x27;,targetDnsServers[].ipAddress), State:forwardingRuleState}&quot; -o table
-az dns-resolver vnet-link list -g &quot;$RG_AZ&quot; --ruleset-name dnsfrs-hub-sea --query &quot;[].{RulesetLink:name, VNet:virtualNetwork.id}&quot; -o table
+az dns-resolver vnet-link list -g &quot;$RG_AZ&quot; --ruleset-name dnsfrs-hub-sea --query &quot;[].[name, virtualNetwork.id]&quot; -o tsv \
+  | awk -F&#x27;\t&#x27; &#x27;BEGIN{printf &quot;%-12s %s\n&quot;,&quot;RulesetLink&quot;,&quot;VNet&quot;} {n=split($2,p,&quot;/&quot;); printf &quot;%-12s %s\n&quot;,$1,p[n]}&#x27;
 echo &quot;== Private DNS zone ==&quot;
 az network private-dns record-set a list -g &quot;$RG_AZ&quot; -z privatelink.blob.core.windows.net --query &quot;[].{Record:name, IP:join(&#x27;,&#x27;,aRecords[].ipv4Address)}&quot; -o table
 az network private-dns link vnet list -g &quot;$RG_AZ&quot; -z privatelink.blob.core.windows.net --query &quot;[].{Link:name, AutoRegistration:registrationEnabled, ResolutionPolicy:resolutionPolicy, State:virtualNetworkLinkState}&quot; -o table
 echo &quot;== VMs ==&quot;
-az vm list -d --query &quot;[?starts_with(name,&#x27;vm-&#x27;)].{VM:name, Region:location, PrivateIP:privateIps, PublicIP:publicIps, State:powerState}&quot; -o table</code></pre></div>
+for rg in &quot;$RG_ONP&quot; &quot;$RG_AZ&quot;; do
+  az vm list -d -g &quot;$rg&quot; --query &quot;[].[name, location, privateIps, publicIps || &#x27;none&#x27;, powerState]&quot; -o tsv
+done | awk -F&#x27;\t&#x27; &#x27;BEGIN{printf &quot;%-16s %-18s %-11s %-9s %s\n&quot;,&quot;VM&quot;,&quot;Region&quot;,&quot;PrivateIP&quot;,&quot;PublicIP&quot;,&quot;State&quot;} {printf &quot;%-16s %-18s %-11s %-9s %s\n&quot;,$1,$2,$3,$4,$5}&#x27;</code></pre></div>
   <div class="code"><div class="code-title">infra/modules/onprem.bicep (dc)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource nic &#x27;Microsoft.Network/networkInterfaces@2024-05-01&#x27; = {
   name: &#x27;nic-vm-onprem-dc01&#x27;
   location: location
@@ -658,11 +687,50 @@ resource vm &#x27;Microsoft.Compute/virtualMachines@2024-07-01&#x27; = {
     }
   }
 }</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>Read-back of everything the deployment built</figcaption></figure><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>vm-onprem-dc01 (10.10.1.4) and vm-spoke-app01 (10.21.1.4), no public IPs</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>VNet             Region            Prefix        DNS
-vnet-onprem-idc  indonesiacentral  10.10.0.0/16  Azure-provided
-vnet-hub-sea     southeastasia     10.20.0.0/16  Azure-provided
-vnet-spoke-sea   southeastasia     10.21.0.0/16  10.20.0.4</pre></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s08-verify.png" target="_blank" rel="noopener"><img src="assets/img/screens/s08-verify.png" alt="Read-back of everything the deployment built (lab resource groups only)" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>Read-back of everything the deployment built (lab resource groups only)</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>== VNets and DNS servers ==
+VNet             Region             Prefix         DNS servers
+vnet-onprem-idc  indonesiacentral   10.10.0.0/16   Azure-provided
+vnet-hub-sea     southeastasia      10.20.0.0/16   Azure-provided
+vnet-spoke-sea   southeastasia      10.21.0.0/16   10.20.0.4
+== Delegated resolver subnets ==
+Subnet               Prefix          Delegation
+-------------------  --------------  ------------------------------
+GatewaySubnet        10.20.255.0/27
+snet-dnspr-inbound   10.20.0.0/28    Microsoft.Network/dnsResolvers
+snet-dnspr-outbound  10.20.0.16/28   Microsoft.Network/dnsResolvers
+== Site-to-site connections ==
+Connection         Status     Type   Protocol
+cn-hub-to-onprem   Connected  IPsec  IKEv2
+cn-onprem-to-hub   Connected  IPsec  IKEv2
+== Peering ==
+Peering            State      GatewayTransit
+-----------------  ---------  --------------
+peer-hub-to-spoke  Connected  True
+Peering            State      UseRemoteGateways
+-----------------  ---------  -----------------
+peer-spoke-to-hub  Connected  True
+== DNS Private Resolver ==
+Inbound     IP         Allocation
+----------  ---------  ----------
+in-hub-sea  10.20.0.4  Static
+Rule         Domain        Target     State
+-----------  ------------  ---------  -------
+contoso-com  contoso.com.  10.10.1.4  Enabled
+contoso-org  contoso.org.  10.10.1.4  Enabled
+RulesetLink  VNet
+link-hub     vnet-hub-sea
+== Private DNS zone ==
+Record                 IP
+---------------------  ---------
+stdnslabweuqgyzgvmxkg  10.21.2.4
+Link      AutoRegistration  ResolutionPolicy  State
+--------  ----------------  ----------------  ---------
+link-hub  False             NxDomainRedirect  Completed
+== VMs ==
+VM               Region             PrivateIP   PublicIP  State
+vm-onprem-dc01   indonesiacentral   10.10.1.4   none      VM running
+vm-spoke-app01   southeastasia      10.21.1.4   none      VM running</pre></div>
   <div class="callout note"><div class="callout-h">Note</div><div>Lab compromise: dc01 lists 168.63.129.16 as its second DNS server, so the VM can resolve Azure endpoints before the DNS role is installed. Production DCs point only to DCs.</div></div>
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/virtual-dc/adds-on-azure-vm" target="_blank" rel="noopener">Deploy AD DS on Azure VMs</a></li><li><a href="https://learn.microsoft.com/azure/architecture/example-scenario/identity/adds-extend-domain" target="_blank" rel="noopener">Extend AD DS to Azure (Architecture Center)</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/virtual-networks-name-resolution-for-vms-and-role-instances" target="_blank" rel="noopener">Name resolution for resources in Azure VNets</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-vpn-faq" target="_blank" rel="noopener">VPN Gateway FAQ (custom DNS, private DNS zones)</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/ip-services/default-outbound-access" target="_blank" rel="noopener">Default outbound access</a></li><li><a href="https://learn.microsoft.com/azure/virtual-machines/windows/run-command" target="_blank" rel="noopener">Run scripts with Run Command</a></li></ul></div>
 </section>
@@ -670,13 +738,27 @@ vnet-spoke-sea   southeastasia     10.21.0.0/16  10.20.0.4</pre></div>
   <div class="step-h"><span class="badge">9</span><div><h2>Promote dc01: contoso.org (AD DS + DNS)</h2>
   <div class="meta"><span>Cloud Shell → Run Command</span><span>Time: 12 min</span></div></div></div>
   <p class="why">This builds the "on-prem" DNS side: an AD-integrated DNS server that is authoritative for <code>contoso.org</code> (the AD domain) and <code>contoso.com</code> (a second, forest-wide zone). Internet names are forwarded to 168.63.129.16 with a 5-second timeout, because Learn says Windows DNS servers forwarding to Azure DNS should wait more than 4 seconds.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./04-promote-dc.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/04-promote-dc.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 4: promote vm-onprem-dc01 to the first DC of contoso.org (AD DS + DNS), then add the lab records.
+# Safe to re-run: the promotion is skipped when dc01 is already a domain controller.
 source ./00-variables.sh
-az vm run-command invoke -g &quot;$RG_ONP&quot; -n &quot;$VM_DC&quot; --command-id RunPowerShellScript \
-  --scripts @ps/dc-promote.ps1 --parameters &quot;DomainName=$DOMAIN&quot; &quot;NetbiosName=$NETBIOS&quot; &quot;SafeModePassword=$ADMIN_PASS&quot; \
-  --query &quot;value[0].message&quot; -o tsv
-echo &quot;Waiting 8 minutes for the promotion reboot ...&quot;; sleep 480
+role=$(az vm run-command invoke -g &quot;$RG_ONP&quot; -n &quot;$VM_DC&quot; --command-id RunPowerShellScript \
+        --scripts &quot;(Get-CimInstance Win32_ComputerSystem).DomainRole&quot; \
+        --query &quot;value[0].message&quot; -o tsv | sed -n &#x27;/\[stdout\]/{n;p}&#x27; | tr -dc &#x27;0-9&#x27;)
+if [ &quot;${role:-0}&quot; -ge 4 ]; then
+  echo &quot;dc01 is already a domain controller (DomainRole=$role): promotion skipped.&quot;
+else
+  # An ephemeral Cloud Shell session loses ~/.dnslab, and with it the password the VMs were created with.
+  # Re-apply the current password to dc01&#x27;s local administrator before the promotion turns it into the
+  # domain administrator. VMAccess (az vm user update) supports this only while the VM is NOT yet a DC (Microsoft Learn).
+  az vm user update -g &quot;$RG_ONP&quot; -n &quot;$VM_DC&quot; -u &quot;$ADMIN_USER&quot; -p &quot;$ADMIN_PASS&quot; -o none \
+    &amp;&amp; echo &quot;dc01: local administrator password re-applied (VMAccess).&quot;
+  az vm run-command invoke -g &quot;$RG_ONP&quot; -n &quot;$VM_DC&quot; --command-id RunPowerShellScript \
+    --scripts @ps/dc-promote.ps1 --parameters &quot;DomainName=$DOMAIN&quot; &quot;NetbiosName=$NETBIOS&quot; &quot;SafeModePassword=$ADMIN_PASS&quot; \
+    --query &quot;value[0].message&quot; -o tsv
+  echo &quot;Waiting 8 minutes for the promotion reboot ...&quot;; sleep 480
+fi
 az vm run-command invoke -g &quot;$RG_ONP&quot; -n &quot;$VM_DC&quot; --command-id RunPowerShellScript \
   --scripts @ps/dc-configure.ps1 --parameters &quot;SecondZone=$DOMAIN2&quot; \
   --query &quot;value[0].message&quot; -o tsv</code></pre></div>
@@ -717,21 +799,36 @@ Get-DnsServerZone | Where-Object { -not $_.IsAutoCreated -and $_.ZoneName -notli
   Format-Table ZoneName, ZoneType, IsDsIntegrated, ReplicationScope -AutoSize | Out-String -Width 110
 $fw = Get-DnsServerForwarder
 &quot;Server forwarder: $($fw.IPAddress.IPAddressToString -join &#x27;,&#x27;)  UseRootHint=$($fw.UseRootHint)  Timeout=$($fw.Timeout)s&quot;</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>dc01 after the promotion: AD-integrated zones and the server forwarder</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Domain: contoso.org   DC: DC01
-ZoneName              ZoneType IsDsIntegrated ReplicationScope
-_msdcs.contoso.org Primary  True           Forest
-contoso.com        Primary  True           Forest
-contoso.org        Primary  True           Domain
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s09-dc-configured.png" target="_blank" rel="noopener"><img src="assets/img/screens/s09-dc-configured.png" alt="dc01 after the promotion: AD-integrated zones and the server forwarder" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>dc01 after the promotion: AD-integrated zones and the server forwarder</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>dc01: local administrator password re-applied (VMAccess).
+Data disk: NTDS F:\ 32 GB
+WARNING: The following recommended condition is not met for DNS: No static IP addresses were found on this computer. If
+ the IP address changes, clients might not be able to contact this server. Please configure a static IP address on this
+ computer before installing DNS Server.
+Install-WindowsFeature: Success=True RestartNeeded=No
+Install-ADDSForest: Status=Success RebootRequired=True
+Message: You must restart this computer to complete the operation.
+
+Rebooting in 60 seconds to finish the promotion.
+Waiting 8 minutes for the promotion reboot ...
+Domain: contoso.org   DC: dc01   Forest mode: Windows2016Forest
+
+ZoneName           ZoneType IsDsIntegrated ReplicationScope
+--------           -------- -------------- ----------------
+_msdcs.contoso.org Primary            True Forest
+contoso.com        Primary            True Forest
+contoso.org        Primary            True Domain
+
 Server forwarder: 168.63.129.16  UseRootHint=False  Timeout=5s</pre></div>
-  <div class="callout note"><div class="callout-h">Note</div><div>Run Command returns only the last 4,096 bytes of output, so every lab script prints a compact summary.</div></div>
+  <div class="callout note"><div class="callout-h">Note</div><div>The promotion prints a DNS prerequisite warning, <i>“No static IP addresses were found on this computer”</i>. Microsoft Learn says this <i>“can safely be ignored, as static IPs are assigned in the Azure virtual network”</i>: the address is static on the NIC; never set it inside Windows. Run Command returns only the last 4,096 bytes of output, so every lab script prints a compact summary.</div></div>
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/virtual-dc/adds-on-azure-vm" target="_blank" rel="noopener">Deploy AD DS on Azure VMs</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/virtual-networks-name-resolution-for-vms-and-role-instances" target="_blank" rel="noopener">Name resolution for resources in Azure VNets</a></li><li><a href="https://learn.microsoft.com/azure/virtual-machines/windows/run-command" target="_blank" rel="noopener">Run scripts with Run Command</a></li></ul></div>
 </section>
 <section class="step" id="s10">
   <div class="step-h"><span class="badge">10</span><div><h2>On-prem → Azure: conditional forwarder to the inbound endpoint</h2>
   <div class="meta"><span>Cloud Shell → Run Command on dc01</span><span>Time: 4 min</span></div></div></div>
   <p class="why">The same query, <code>&lt;storage&gt;.blob.core.windows.net</code>, runs three times: <b>before</b> (no forwarder), with <b>Option A</b> (forward <code>privatelink.blob.core.windows.net</code>, as Contoso does today) and with <b>Option B</b> (forward the public zone <code>blob.core.windows.net</code>, as Microsoft Learn recommends). Each forwarder is AD-integrated with replication scope <b>Forest</b>.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./05-onprem-forwarder.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/05-onprem-forwarder.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 5: on-prem AD DNS -&gt; Azure. Test before, then Option A (privatelink zone), then Option B (public zone).
 source ./00-variables.sh
 FQDN=&quot;$ST_NAME.blob.core.windows.net&quot;
@@ -766,18 +863,47 @@ $cn  = ($ans | Where-Object Type -eq &#x27;CNAME&#x27; | ForEach-Object { $_.Nam
 Get-DnsServerZone | Where-Object ZoneType -eq &#x27;Forwarder&#x27; |
   Format-Table ZoneName, @{n=&#x27;MasterServers&#x27;;e={$_.MasterServers.IPAddressToString -join &#x27;,&#x27;}}, IsDsIntegrated, ReplicationScope -AutoSize |
   Out-String -Width 120</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>dc01 resolving the storage account before, with Option A and with Option B</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Mode : Before   -&gt; A record: &lt;public IP&gt;   Private IP?: no
-Mode : OptionA  -&gt; recorded in Results
-Mode : OptionB  -&gt; A record: 10.21.2.4    Private IP?: YES</pre></div>
-  <div class="callout note"><div class="callout-h">Note</div><div>Microsoft Learn: “The conditional forwarding must be made to the recommended public DNS zone forwarder. For example: database.windows.net instead of privatelink.database.windows.net.” The lab records what Windows DNS actually returns with Option A. Treat it as a lab observation, not documented behaviour.</div></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s10-onprem-forwarder.png" target="_blank" rel="noopener"><img src="assets/img/screens/s10-onprem-forwarder.png" alt="dc01 resolving the storage account before, with Option A and with Option B" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>dc01 resolving the storage account before, with Option A and with Option B</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>=== BEFORE (no forwarder) ===
+Mode       : Before
+Query      : stdnslabweuqgyzgvmxkg.blob.core.windows.net (asked to this DNS server)
+CNAME chain: stdnslabweuqgyzgvmxkg.privatelink.blob.core.windows.net  &gt;  blob.sin21prdstr03a.store.core.windows.net
+A record   : 20.150.28.100
+Private IP?: no - public address
+Conditional forwarders on this server:
+
+=== OPTION A: privatelink.blob.core.windows.net -&gt; 10.20.0.4 ===
+Mode       : OptionA
+Query      : stdnslabweuqgyzgvmxkg.blob.core.windows.net (asked to this DNS server)
+CNAME chain: stdnslabweuqgyzgvmxkg.privatelink.blob.core.windows.net  &gt;  blob.sin21prdstr03a.store.core.windows.net
+A record   : 20.150.28.100
+Private IP?: no - public address
+Conditional forwarders on this server:
+
+ZoneName                          MasterServers IsDsIntegrated ReplicationScope
+--------                          ------------- -------------- ----------------
+privatelink.blob.core.windows.net 10.20.0.4               True Forest
+
+=== OPTION B: blob.core.windows.net -&gt; 10.20.0.4 ===
+Mode       : OptionB
+Query      : stdnslabweuqgyzgvmxkg.blob.core.windows.net (asked to this DNS server)
+CNAME chain: stdnslabweuqgyzgvmxkg.privatelink.blob.core.windows.net
+A record   : 10.21.2.4
+Private IP?: YES - Private Endpoint
+Conditional forwarders on this server:
+
+ZoneName              MasterServers IsDsIntegrated ReplicationScope
+--------              ------------- -------------- ----------------
+blob.core.windows.net 10.20.0.4               True Forest</pre></div>
+  <div class="callout note"><div class="callout-h">Note</div><div>Microsoft Learn: “The conditional forwarding must be made to the recommended public DNS zone forwarder. For example: database.windows.net instead of privatelink.database.windows.net.” <br><b>Result of this run:</b> Option A returned the <b>public</b> IP (20.150.28.100); Option B returned the <b>Private Endpoint</b> IP (10.21.2.4). <b>Likely cause (not documented by Microsoft; verify in a PoC):</b> dc01 sends every other name to its server forwarder 168.63.129.16, a recursive resolver that returns the whole CNAME chain (<code>blob</code> → <code>privatelink</code> → public A record) in one answer, so Windows DNS never asks its <code>privatelink</code> forwarder for the CNAME target. A DNS server that resolves internet names iteratively (root hints) may behave differently; it was not tested here.</div></div>
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns-integration" target="_blank" rel="noopener">Private endpoint DNS integration</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-hybrid-dns" target="_blank" rel="noopener">Resolve Azure and on-premises domains</a></li><li><a href="https://learn.microsoft.com/powershell/module/dnsserver/add-dnsserverconditionalforwarderzone" target="_blank" rel="noopener">Add-DnsServerConditionalForwarderZone</a></li></ul></div>
 </section>
 <section class="step" id="s11">
   <div class="step-h"><span class="badge">11</span><div><h2>Azure → AD: tests from the spoke VM</h2>
   <div class="meta"><span>Cloud Shell → Run Command on app01</span><span>Time: 3 min</span></div></div></div>
   <p class="why">The spoke VM asks only the inbound endpoint. AD names and the DC-locator SRV record must come back from the DC across the VPN through the ruleset, and the storage name must resolve to the Private Endpoint IP through the hub-linked zone.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./06-test-spoke.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/06-test-spoke.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 6: tests from the spoke VM (VNet DNS = inbound endpoint): AD names, DC locator, Private Endpoint, ports.
 source ./00-variables.sh
 az vm run-command invoke -g &quot;$RG_AZ&quot; -n &quot;$VM_APP&quot; --command-id RunPowerShellScript \
@@ -814,13 +940,27 @@ foreach ($p in 53, 88, 389, 445) {
   $t = Test-NetConnection $DcIp -Port $p -WarningAction SilentlyContinue
   &#x27;TCP {0,-4} to {1} : {2}&#x27; -f $p, $DcIp, $t.TcpTestSucceeded
 }</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>vm-spoke-app01: AD names, the _msdcs SRV record, the Private Endpoint, and AD ports over the VPN</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>DNS server used by this VM: 10.20.0.4
-dc01.contoso.org                  A    10.10.1.4
-_ldap._tcp.dc._msdcs.contoso.org  SRV  dc01.contoso.org:389
-portal.contoso.com                A    10.10.1.60
-&lt;storage&gt;.blob.core.windows.net      A    10.21.2.4 (via &lt;storage&gt;.privatelink.blob.core.windows.net)
-TCP 53 / 88 / 389 / 445 to 10.10.1.4 : True</pre></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s11-spoke-tests.png" target="_blank" rel="noopener"><img src="assets/img/screens/s11-spoke-tests.png" alt="vm-spoke-app01: AD names, the _msdcs SRV record, the Private Endpoint, and AD ports over the VPN" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>vm-spoke-app01: AD names, the _msdcs SRV record, the Private Endpoint, and AD ports over the VPN</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>DNS server used by this VM: 10.20.0.4
+
+dc01.contoso.org                             A    10.10.1.4
+intranet.contoso.org                         A    10.10.1.50
+_ldap._tcp.dc._msdcs.contoso.org             SRV  dc01.contoso.org:389
+portal.contoso.com                           A    10.10.1.60
+stdnslabweuqgyzgvmxkg.blob.core.windows.net  A    10.21.2.4  (via stdnslabweuqgyzgvmxkg.privatelink.blob.core.windows.net)
+www.microsoft.com                            A    23.41.38.100  (via www.microsoft.com-c-3.edgekey.net)
+
+DC locator (nltest /dsgetdc:contoso.org /force):
+           DC: \\dc01.contoso.org
+      Address: \\10.10.1.4
+     Dom Name: contoso.org
+ Dc Site Name: Default-First-Site-Name
+The command completed successfully
+
+TCP 53   to 10.10.1.4 : True
+TCP 88   to 10.10.1.4 : True
+TCP 389  to 10.10.1.4 : True
+TCP 445  to 10.10.1.4 : True</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-endpoints-rulesets" target="_blank" rel="noopener">Endpoints and rulesets</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-hybrid-dns" target="_blank" rel="noopener">Resolve Azure and on-premises domains</a></li></ul></div>
 </section>
@@ -828,7 +968,8 @@ TCP 53 / 88 / 389 / 445 to 10.10.1.4 : True</pre></div>
   <div class="step-h"><span class="badge">12</span><div><h2>Domain join over the resolver and the VPN</h2>
   <div class="meta"><span>Cloud Shell → Run Command on app01</span><span>Time: 5 min</span></div></div></div>
   <p class="why">Domain join is the end-to-end proof. It needs the SRV lookups in <code>_msdcs.contoso.org</code> (through the ruleset) and Kerberos, LDAP and SMB to the DC over the VPN. After the restart, the secure channel is checked with nltest.</p>
-  <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
+  <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./07-domain-join.sh</code></pre></div>
+  <div class="code"><div class="code-title">scripts/07-domain-join.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 7: join the spoke VM to contoso.org through the resolver + VPN, then verify the secure channel.
 source ./00-variables.sh
 az vm run-command invoke -g &quot;$RG_AZ&quot; -n &quot;$VM_APP&quot; --command-id RunPowerShellScript \
@@ -848,27 +989,55 @@ try {
 } catch {
   &quot;Domain join FAILED: $($_.Exception.Message)&quot;
 }</code></pre></div>
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Cloud Shell · captured during the lab run</small></div><figcaption><span class="where">Cloud Shell</span>vm-spoke-app01 joined to contoso.org; nltest secure channel NERR_Success</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Domain       : contoso.org
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s12-domain-join.png" target="_blank" rel="noopener"><img src="assets/img/screens/s12-domain-join.png" alt="vm-spoke-app01 joined to contoso.org; nltest secure channel NERR_Success" loading="lazy"></a><figcaption><span class="where">Cloud Shell</span>vm-spoke-app01 joined to contoso.org; nltest secure channel NERR_Success</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output · 28 Oct 2026</div><pre>WARNING: The changes will take effect after you restart the computer app01.
+Joined app01 to contoso.org. Restarting in 30 seconds.
+Waiting 3 minutes for the reboot ...
+Name         : app01
+Domain       : contoso.org
 PartOfDomain : True
+
+Flags: 30 HAS_IP  HAS_TIMESERV
 Trusted DC Name \\dc01.contoso.org
-Trusted DC Connection Status Status = 0 0x0 NERR_Success</pre></div>
+Trusted DC Connection Status Status = 0 0x0 NERR_Success
+The command completed successfully
+           DC: \\dc01.contoso.org
+      Address: \\10.10.1.4
+     Dom Guid: 46bb28aa-56c2-425f-86c9-20252e4fbd5a
+     Dom Name: contoso.org
+  Forest Name: contoso.org
+ Dc Site Name: Default-First-Site-Name
+Our Site Name: Default-First-Site-Name
+        Flags: PDC GC DS LDAP KDC TIMESERV WRITABLE DNS_DC DNS_DOMAIN DNS_FOREST CLOSE_SITE FULL_SECRET WS DS_8 DS_9 DS_10 KEYLIST
+The command completed successfully</pre></div>
   
   <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/architecture/example-scenario/identity/adds-extend-domain" target="_blank" rel="noopener">Extend AD DS to Azure (Architecture Center)</a></li></ul></div>
 </section>
 <section class="step" id="s13">
   <div class="step-h"><span class="badge">13</span><div><h2>Observe: resolver metrics</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
-  <p class="why">The resolver publishes <b>Queries Per Second</b> per endpoint, so you can see the test traffic arrive at the inbound endpoint.</p>
-  <div class="code"><div class="code-title">Azure portal</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash"># Portal: dnspr-hub-sea &gt; Monitoring &gt; Metrics &gt; &#x27;Queries Per Second&#x27;, split by endpoint</code></pre></div>
+  <p class="why">Azure Monitor publishes <b>Queries Per Second</b> for the resolver (REST name <code>QPSMdm</code>, 1-minute grain), which can be split by <code>EndpointArmResourceId</code> (the portal shows this dimension as <b>EndpointId</b>), so the test traffic of steps 10-12 shows up per endpoint. The older <code>QPS</code> metric is marked deprecated. The outbound endpoint only carries queries that match a ruleset rule, here the AD names, so its line is much lower than the inbound one.</p>
   
-  <div class="shots"><figure class="shot pending"><div class="ph"><span>Screenshot pending</span><small>Azure portal · captured during the lab run</small></div><figcaption><span class="where">Azure portal</span>DNS Private Resolver metrics during the tests</figcaption></figure></div>
-  <div class="out expected"><div class="out-h">Expected result</div><pre>Queries Per Second shows traffic on in-hub-sea during steps 10-12.</pre></div>
+  <div class="code"><div class="code-title">Azure portal</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash"># Portal: dnspr-hub-sea &gt; Monitoring &gt; Metrics &gt; Metric: Queries Per Second (Sum) &gt; Apply splitting: EndpointId</code></pre></div>
   
-  <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li></ul></div>
+  <div class="shots"><figure class="shot"><a href="assets/img/screens/s13-metrics.png" target="_blank" rel="noopener"><img src="assets/img/screens/s13-metrics.png" alt="Queries Per Second (Sum) split by endpoint: inbound in-hub-sea and outbound out-hub-sea during the lab run" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Queries Per Second (Sum) split by endpoint: inbound in-hub-sea and outbound out-hub-sea during the lab run</figcaption></figure></div>
+  <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Chart: Sum Queries Per Second for dnspr-hub-sea by EndpointId (local time, last 24 hours)
+inboundendpoints/in-hub-sea    5.12
+outboundendpoints/out-hub-sea  0.47</pre></div>
+  
+  <div class="learn"><div class="learn-h">Microsoft Learn</div><ul><li><a href="https://learn.microsoft.com/azure/azure-monitor/reference/supported-metrics/microsoft-network-dnsresolvers-metrics" target="_blank" rel="noopener">Supported metrics for Microsoft.Network/dnsResolvers</a></li><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li></ul></div>
 </section>
 
-<section id="results"><h2>Results</h2><div class="callout pending"><div class="callout-h">Results pending</div><div>This table is filled with the outcomes of the real lab run (steps 10-12). No result is shown until it has been captured.</div></div></section>
+<section id="results"><h2>Results</h2><table class="grid"><thead><tr><th>Test</th><th>From</th><th>Result</th><th>Status</th></tr></thead><tbody><tr><td>Bicep deployment, both regions (31 resources)</td><td>Cloud Shell</td><td>Succeeded: on-prem module 26 min, Azure module 23 min</td><td class="ok">PASS</td></tr><tr><td>Site-to-site VPN</td><td>Azure</td><td>cn-hub-to-onprem and cn-onprem-to-hub Connected (IPsec, IKEv2)</td><td class="ok">PASS</td></tr><tr><td>Promote dc01 (contoso.org + contoso.com)</td><td>Run Command</td><td>Install-ADDSForest Success; 3 AD-integrated zones; forwarder 168.63.129.16 (5 s)</td><td class="ok">PASS</td></tr><tr><td>On-prem → Private Endpoint, no forwarder</td><td>dc01</td><td>20.150.28.100 (public), as expected</td><td class="info">BASELINE</td></tr><tr><td>On-prem → Private Endpoint, Option A: privatelink.blob.core.windows.net → 10.20.0.4</td><td>dc01</td><td>20.150.28.100 (public): private IP not returned</td><td class="bad">FAIL</td></tr><tr><td>On-prem → Private Endpoint, Option B: blob.core.windows.net → 10.20.0.4</td><td>dc01</td><td>10.21.2.4 (Private Endpoint)</td><td class="ok">PASS</td></tr><tr><td>Azure → AD names through the ruleset</td><td>app01 (DNS 10.20.0.4)</td><td>dc01 10.10.1.4, intranet 10.10.1.50, portal.contoso.com 10.10.1.60</td><td class="ok">PASS</td></tr><tr><td>DC locator: _ldap._tcp.dc._msdcs.contoso.org</td><td>app01</td><td>SRV dc01.contoso.org:389; nltest /dsgetdc found dc01 (10.10.1.4)</td><td class="ok">PASS</td></tr><tr><td>Azure → Private Endpoint</td><td>app01</td><td>10.21.2.4 via the privatelink CNAME</td><td class="ok">PASS</td></tr><tr><td>Internet name</td><td>app01</td><td>www.microsoft.com 23.41.38.100</td><td class="ok">PASS</td></tr><tr><td>AD ports over the VPN (TCP 53, 88, 389, 445)</td><td>app01 → dc01</td><td>All True</td><td class="ok">PASS</td></tr><tr><td>Domain join and secure channel</td><td>app01</td><td>PartOfDomain True; nltest /sc_query NERR_Success</td><td class="ok">PASS</td></tr><tr><td>Resolver metrics</td><td>Azure Monitor</td><td>Queries Per Second split by endpoint: traffic on in-hub-sea and out-hub-sea</td><td class="ok">PASS</td></tr></tbody></table>
+<h3>What the real run showed</h3>
+<ul class="findings">
+<li><b>Azure → AD works through the resolver.</b> From the spoke (DNS = inbound endpoint 10.20.0.4), contoso.org, contoso.com and the <code>_msdcs</code> SRV record were answered by dc01 across the VPN through the ruleset, the DC locator found dc01, and the VM joined the domain (secure channel NERR_Success).</li>
+<li><b>Private Endpoints resolve from both sides.</b> The spoke got 10.21.2.4 through the hub-linked private DNS zone. From on-prem, only the <b>public-zone</b> conditional forwarder (Option B, <code>blob.core.windows.net</code> → 10.20.0.4) returned the private IP. The <code>privatelink</code> forwarder (Option A) returned the public IP in this lab: plan to forward the public zones, as Microsoft Learn recommends, and test your own forwarder chain in the PoC.</li>
+<li><b>VM size check:</b> <code>NotAvailableForSubscription</code> for Standard_D2s_v5 in Southeast Asia applied to <b>zone 1 only</b>. Regional VMs were unaffected; the pre-flight script now treats only Location restrictions as blocking.</li>
+<li><b>Expected warning:</b> AD DS promotion warns that the NIC has no static IP. Microsoft Learn says it can be ignored on Azure, where the IP is static on the NIC.</li>
+<li><b>Cloud Shell is ephemeral:</b> a reset session loses <code>~/.dnslab</code>. The deployment kept running in Azure; step 9 now re-applies the admin password before promotion, and <code>98-reset-domain-admin.sh</code> covers a reset after promotion.</li>
+<li><b>Metrics:</b> the portal lists Inbound/Outbound Endpoint Count and Queries Per Second (plus the deprecated QPS), matching the Azure Monitor reference; the split dimension is shown as EndpointId.</li>
+</ul></section>
 
 <section id="cleanup"><h2>Clean up</h2><p>Deletes both resource groups and everything in them.</p><div class="code"><div class="code-title">scripts/99-cleanup.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Cleanup: delete both resource groups (the VPN gateways and resolver endpoints bill by the hour).
@@ -878,9 +1047,9 @@ az group delete -n &quot;$RG_ONP&quot; --yes --no-wait
 az deployment sub delete -n &quot;$DEPLOYMENT&quot; --no-wait 2&gt;/dev/null
 echo &quot;Deletion started (about 15-20 minutes). Remove $HOME/.dnslab afterwards.&quot;</code></pre></div></section>
 
-<section id="troubleshooting"><h2>Troubleshooting</h2><table class="grid"><thead><tr><th>Symptom</th><th>Check</th></tr></thead><tbody><tr><td>VPN connection stays &quot;Connecting&quot;</td><td>Make sure both connections use the same shared key, each local network gateway has the other side&#x27;s public IP, and the prefixes are right. On-prem must list 10.20.0.0/16 and 10.21.0.0/16. Wait 3-5 minutes and check again.</td></tr><tr><td>Spoke cannot resolve contoso.org</td><td>Check that the spoke VNet DNS is 10.20.0.4 and the VM has restarted since the change, the ruleset is linked to vnet-hub-sea, and the VPN is Connected. Test from dc01 that 10.20.0.16/28 can reach it: Test-NetConnection 10.10.1.4 -Port 53 from the hub side.</td></tr><tr><td>On-prem gets the public IP for the storage account</td><td>Check that the forwarder exists (Get-DnsServerZone), then clear the server cache. Use Option B (the public zone) if Option A does not return the private IP.</td></tr><tr><td>Run Command returns nothing</td><td>The subnet needs outbound HTTPS. This lab uses default outbound access on the VM subnets. Run Command also keeps only the last 4,096 bytes of output.</td></tr><tr><td>--use-remote-gateways fails</td><td>The hub gateway has not finished provisioning. Run 08-wait-gateways.sh, then 10-peering.sh again.</td></tr><tr><td>Domain join fails while DNS works</td><td>Check TCP 88, 389 and 445 to 10.10.1.4 (step 13) and the clock skew. The credential is CONTOSO\labadmin, from ~/.dnslab.</td></tr></tbody></table></section>
+<section id="troubleshooting"><h2>Troubleshooting</h2><table class="grid"><thead><tr><th>Symptom</th><th>Check</th></tr></thead><tbody><tr><td>VPN connection stays &quot;Connecting&quot;</td><td>Make sure both connections use the same shared key, each local network gateway has the other side&#x27;s public IP, and the prefixes are right. On-prem must list 10.20.0.0/16 and 10.21.0.0/16. Wait 3-5 minutes and check again.</td></tr><tr><td>Spoke cannot resolve contoso.org</td><td>Check that the spoke VNet DNS is 10.20.0.4 (and the VM has restarted since it changed), the ruleset is linked to vnet-hub-sea, both VPN connections are Connected, and the on-prem local network gateway lists 10.20.0.0/16 so replies to the outbound endpoint (10.20.0.16/28) return through the tunnel.</td></tr><tr><td>On-prem gets the public IP for the storage account</td><td>This is what Option A (forwarding the privatelink zone) returned in this lab. Forward the public zone (for example blob.core.windows.net) to the inbound endpoint instead, as Microsoft Learn recommends, then run Clear-DnsServerCache and test again.</td></tr><tr><td>Run Command returns nothing</td><td>The subnet needs outbound HTTPS. This lab uses default outbound access on the VM subnets. Run Command also keeps only the last 4,096 bytes of output.</td></tr><tr><td>Cloud Shell session was reset (files and ~/.dnslab gone)</td><td>The deployment and Run Command keep running in Azure. Clone the repo again and continue: a new ~/.dnslab is generated. Before step 9, 04-promote-dc.sh re-applies the new password to dc01. After step 9, run 98-reset-domain-admin.sh first (VMAccess does not support domain controllers, so it resets the domain password with Run Command).</td></tr><tr><td>Pre-flight says the VM size is not available</td><td>Look at the restriction type with az vm list-skus: a Zone restriction (for example NotAvailableForSubscription in zone 1) does not block the lab VMs, which are regional. Only a Location restriction does; then export VM_SIZE=&lt;size&gt;.</td></tr><tr><td>Domain join fails while DNS works</td><td>Check TCP 88, 389 and 445 to 10.10.1.4 (step 11 output) and the clock skew. The credential is CONTOSO\labadmin with the password in ~/.dnslab; if Cloud Shell was reset after step 9, run 98-reset-domain-admin.sh first.</td></tr></tbody></table></section>
 
-<section id="references"><h2>References</h2><ul class="refs"><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-endpoints-rulesets" target="_blank" rel="noopener">Endpoints and rulesets</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-architecture" target="_blank" rel="noopener">Private resolver architecture</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-hybrid-dns" target="_blank" rel="noopener">Resolve Azure and on-premises domains</a></li><li><a href="https://learn.microsoft.com/cli/azure/dns-resolver" target="_blank" rel="noopener">az dns-resolver (CLI reference)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli" target="_blank" rel="noopener">Site-to-site VPN with Azure CLI</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/gateway-sku-consolidation" target="_blank" rel="noopener">VPN Gateway SKU consolidation (AZ SKUs)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-vpn-faq" target="_blank" rel="noopener">VPN Gateway FAQ (custom DNS, private DNS zones)</a></li><li><a href="https://learn.microsoft.com/cli/azure/network/vnet/peering" target="_blank" rel="noopener">az network vnet peering</a></li><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns" target="_blank" rel="noopener">Private endpoint DNS zone values</a></li><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns-integration" target="_blank" rel="noopener">Private endpoint DNS integration</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-dns-fallback" target="_blank" rel="noopener">Fallback to internet for Private DNS zones</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/virtual-networks-name-resolution-for-vms-and-role-instances" target="_blank" rel="noopener">Name resolution for resources in Azure VNets</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/manage-virtual-network" target="_blank" rel="noopener">Manage a virtual network (DNS servers)</a></li><li><a href="https://learn.microsoft.com/azure/virtual-machines/windows/run-command" target="_blank" rel="noopener">Run scripts with Run Command</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/ip-services/default-outbound-access" target="_blank" rel="noopener">Default outbound access</a></li><li><a href="https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/virtual-dc/adds-on-azure-vm" target="_blank" rel="noopener">Deploy AD DS on Azure VMs</a></li><li><a href="https://learn.microsoft.com/azure/architecture/example-scenario/identity/adds-extend-domain" target="_blank" rel="noopener">Extend AD DS to Azure (Architecture Center)</a></li><li><a href="https://learn.microsoft.com/powershell/module/dnsserver/add-dnsserverconditionalforwarderzone" target="_blank" rel="noopener">Add-DnsServerConditionalForwarderZone</a></li><li><a href="https://azure.microsoft.com/pricing/details/dns/" target="_blank" rel="noopener">Azure DNS pricing</a></li><li><a href="https://azure.microsoft.com/pricing/details/vpn-gateway/" target="_blank" rel="noopener">VPN Gateway pricing</a></li></ul>
+<section id="references"><h2>References</h2><ul class="refs"><li><a href="https://learn.microsoft.com/azure/dns/dns-private-resolver-overview" target="_blank" rel="noopener">What is Azure DNS Private Resolver?</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-endpoints-rulesets" target="_blank" rel="noopener">Endpoints and rulesets</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-architecture" target="_blank" rel="noopener">Private resolver architecture</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-resolver-hybrid-dns" target="_blank" rel="noopener">Resolve Azure and on-premises domains</a></li><li><a href="https://learn.microsoft.com/cli/azure/dns-resolver" target="_blank" rel="noopener">az dns-resolver (CLI reference)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli" target="_blank" rel="noopener">Site-to-site VPN with Azure CLI</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/gateway-sku-consolidation" target="_blank" rel="noopener">VPN Gateway SKU consolidation (AZ SKUs)</a></li><li><a href="https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-vpn-faq" target="_blank" rel="noopener">VPN Gateway FAQ (custom DNS, private DNS zones)</a></li><li><a href="https://learn.microsoft.com/cli/azure/network/vnet/peering" target="_blank" rel="noopener">az network vnet peering</a></li><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns" target="_blank" rel="noopener">Private endpoint DNS zone values</a></li><li><a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns-integration" target="_blank" rel="noopener">Private endpoint DNS integration</a></li><li><a href="https://learn.microsoft.com/azure/dns/private-dns-fallback" target="_blank" rel="noopener">Fallback to internet for Private DNS zones</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/virtual-networks-name-resolution-for-vms-and-role-instances" target="_blank" rel="noopener">Name resolution for resources in Azure VNets</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/manage-virtual-network" target="_blank" rel="noopener">Manage a virtual network (DNS servers)</a></li><li><a href="https://learn.microsoft.com/azure/virtual-machines/windows/run-command" target="_blank" rel="noopener">Run scripts with Run Command</a></li><li><a href="https://learn.microsoft.com/azure/virtual-network/ip-services/default-outbound-access" target="_blank" rel="noopener">Default outbound access</a></li><li><a href="https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/virtual-dc/adds-on-azure-vm" target="_blank" rel="noopener">Deploy AD DS on Azure VMs</a></li><li><a href="https://learn.microsoft.com/azure/architecture/example-scenario/identity/adds-extend-domain" target="_blank" rel="noopener">Extend AD DS to Azure (Architecture Center)</a></li><li><a href="https://learn.microsoft.com/powershell/module/dnsserver/add-dnsserverconditionalforwarderzone" target="_blank" rel="noopener">Add-DnsServerConditionalForwarderZone</a></li><li><a href="https://learn.microsoft.com/azure/azure-monitor/reference/supported-metrics/microsoft-network-dnsresolvers-metrics" target="_blank" rel="noopener">Supported metrics for Microsoft.Network/dnsResolvers</a></li><li><a href="https://azure.microsoft.com/pricing/details/dns/" target="_blank" rel="noopener">Azure DNS pricing</a></li><li><a href="https://azure.microsoft.com/pricing/details/vpn-gateway/" target="_blank" rel="noopener">VPN Gateway pricing</a></li></ul>
 <p class="small">Every script is in <a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab/tree/main/scripts" target="_blank" rel="noopener">/scripts</a>. Page built 28 Oct 2026.</p></section>
 </main></div>
 <script src="assets/js/site.js"></script>
