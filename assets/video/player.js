@@ -125,7 +125,7 @@
     this.time = el('span', 'lv-time');
     this.sel = el('select', 'lv-sel'); this.sel.setAttribute('aria-label', 'Speed');
     [0.75, 1, 1.25, 1.5].forEach(function (s) { var o = el('option'); o.value = s; o.textContent = s + '\u00d7'; if (s === 1) o.selected = true; self.sel.appendChild(o); });
-    this.bCC = btn(ICON.cc, 'Captions (C)'); this.bCC.classList.add('on');
+    this.bCC = btn('<span class="lv-cc">CC</span>', 'Captions (C)'); this.bCC.classList.add('on');
     this.bVoice = btn(ICON.voice, 'Narration with your browser voice (N)');
     this.bFull = btn(ICON.full, 'Full screen (F)');
     if (!('speechSynthesis' in window)) { this.bVoice.disabled = true; this.bVoice.title = 'Narration is not supported in this browser'; }
@@ -215,7 +215,7 @@
       var n = el('button', 'lv-pbtn pri'); n.type = 'button'; n.textContent = 'Next: ' + nx.title;
       n.addEventListener('click', function () { self.opts.onNext(nx.id); }); row.appendChild(n);
     }
-    this.ov.appendChild(k); this.ov.appendChild(t); this.ov.appendChild(row); this.ov.hidden = false;
+    this.ov.appendChild(k); this.ov.appendChild(t); this.ov.appendChild(row); this.ov.classList.add('poster'); this.ov.hidden = false;
     if (this.opts.onEnd) this.opts.onEnd(this.id);
   };
   Player.prototype.poster = function () {
@@ -225,7 +225,7 @@
     var t = el('div', 't'); t.textContent = this.v.title;
     var b = btn(ICON.play, 'Play video', 'lv-big'); b.addEventListener('click', function () { self.play(); });
     var s = el('div', 's'); s.textContent = fmt(this.total) + ' \u00b7 interactive: pause any time, click the components, use the replay buttons' + (this.v.quiz ? ', answer the quiz' : '');
-    this.ov.appendChild(k); this.ov.appendChild(t); this.ov.appendChild(b); this.ov.appendChild(s); this.ov.hidden = false;
+    this.ov.appendChild(k); this.ov.appendChild(t); this.ov.appendChild(b); this.ov.appendChild(s); this.ov.classList.add('poster'); this.ov.hidden = false;
   };
   Player.prototype.jumpScene = function (dir) {
     var si = this.beats[this.k].si, target;
@@ -264,7 +264,7 @@
     this.track.setAttribute('aria-valuenow', Math.round(f));
   };
   Player.prototype.setCaption = function (c) { this.capSpan.innerHTML = rich(c || ''); this.capBox.style.display = c ? '' : 'none'; };
-  Player.prototype.toggleCC = function () { this.cc = !this.cc; this.capBox.classList.toggle('off', !this.cc); this.bCC.classList.toggle('on', this.cc); };
+  Player.prototype.toggleCC = function () { this.cc = !this.cc; this.capBox.classList.toggle('off', !this.cc); this.bCC.classList.toggle('on', this.cc); this.relayout(); };
   Player.prototype.fullscreen = function () {
     var d = document;
     if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
@@ -407,8 +407,9 @@
     function camApply(rect, instant) {
       rt.cam = rect;
       var S = self.stage.getBoundingClientRect(); if (!S.width) return;
-      var s = Math.min(S.width / rect[2], S.height / rect[3]);
-      var tx = S.width / 2 - (rect[0] + rect[2] / 2) * s, ty = S.height / 2 - (rect[1] + rect[3] / 2) * s;
+      var Sh = S.height * (1 - (self.cc ? 0.15 : 0.04));
+      var s = Math.min(S.width / rect[2], Sh / rect[3]);
+      var tx = S.width / 2 - (rect[0] + rect[2] / 2) * s, ty = Sh / 2 - (rect[1] + rect[3] / 2) * s;
       world.classList.toggle('instant', !!instant);
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
       if (instant) { void world.offsetWidth; world.classList.remove('instant'); }
@@ -435,6 +436,7 @@
     function pill(parent, x, y, text, color, fs, anchor) {
       var g = sv('g', { 'class': 'lv-pill' }), w = text.length * fs * 0.58 + fs * 1.1, h = fs * 1.75;
       var x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+      if (parent !== null && parent.getAttribute && parent.getAttribute('class') !== 'lv-pk') x0 = clamp(x0, 6 * u, Math.max(6 * u, W - w - 6 * u));
       g.appendChild(sv('rect', { x: x0, y: y - h / 2, width: w, height: h, rx: h / 2, fill: color || '#0B2B4C' }));
       var t = sv('text', { x: x0 + w / 2, y: y + fs * 0.05, 'font-size': fs, 'text-anchor': 'middle' }); t.textContent = text; g.appendChild(t);
       parent.appendChild(g); return g;

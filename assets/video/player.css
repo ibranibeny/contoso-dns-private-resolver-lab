@@ -49,6 +49,9 @@
 .lv-ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;text-align:center;padding:5%;
   background:linear-gradient(180deg,rgba(6,18,32,.48),rgba(6,18,32,.80));color:#fff}
 .lv-ov[hidden]{display:none}
+.lv-ov.poster{background:linear-gradient(180deg,rgba(6,18,32,.86),rgba(6,18,32,.93))}
+.lv-cc{font:700 12px/1 "Segoe UI",system-ui,sans-serif;border:2px solid currentColor;border-radius:4px;padding:3px 4px;display:inline-block;letter-spacing:.04em}
+
 .lv-ov .k{font-size:clamp(10px,1.4cqw,15px);letter-spacing:.12em;color:var(--lv-amber);font-weight:700;text-transform:uppercase}
 .lv-ov .t{font-size:clamp(16px,3.4cqw,40px);font-weight:700;line-height:1.15;max-width:90%}
 .lv-ov .s{font-size:clamp(11px,1.6cqw,18px);opacity:.9;max-width:80%}
