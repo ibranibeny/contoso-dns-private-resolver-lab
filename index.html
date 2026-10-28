@@ -3,7 +3,7 @@
 <title>Hybrid DNS lab: Azure DNS Private Resolver (Indonesia Central ⇄ Southeast Asia)</title>
 <meta name="description" content="Step-by-step lab: replace DNS forwarder VMs with Azure DNS Private Resolver in a hybrid hub-spoke design, with a site-to-site VPN between Indonesia Central and Southeast Asia.">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/video/player.css?v=b84831ce"></head>
+<link rel="stylesheet" href="assets/video/player.css?v=7851f287"></head>
 <body>
 <header class="top"><div class="brand">Hybrid DNS lab <span>· Azure DNS Private Resolver</span></div>
 <nav class="toplinks"><a href="#s00">Start</a><a href="videos.html">Videos</a><a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab" target="_blank" rel="noopener">GitHub</a></nav></header>
@@ -15,7 +15,7 @@
   <h1>Replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
   <p class="lead">A working simulation of the hybrid target design. The "on-prem" site runs in <b>Indonesia Central</b> (an AD DS + DNS server and a VPN gateway). Azure runs in <b>Southeast Asia</b> as hub-spoke (a VPN gateway and DNS Private Resolver in the hub, a VM and a Private Endpoint in the spoke). A <b>site-to-site IPsec VPN</b> connects the two, standing in for ExpressRoute.</p>
   <div class="callout note"><div class="callout-h">Lab run completed</div><div>Every screenshot and captured output on this page comes from a real run on 28 Oct 2026. Captured outputs are text copies of the screenshots; subscription names and IDs are masked.</div></div>
-  <div class="lv-embed-h">Watch the overview: an interactive video (click components, replay queries, turn on narration)</div>
+  <div class="lv-embed-h">Watch the overview: an interactive video with narration (click components, replay queries)</div>
   <div data-lab-video="vintro"></div>
   <div class="chips"><span>Infrastructure as code: Bicep (subscription scope)</span><span>Time: about 60-90 minutes (this run: 27 min deployment + 30 min in-VM steps and tests)</span><span>Cost: about USD 0.92/hour plus 2 VMs while running</span><span>Proves: AD forwarding, domain join, Private Endpoint from on-prem</span></div>
   <figure class="diagram"><a href="assets/img/diagrams/lab-architecture.png" target="_blank" rel="noopener"><img src="assets/img/diagrams/lab-architecture.png" alt="Lab architecture with official Azure icons"></a>
@@ -1084,6 +1084,6 @@ echo &quot;Deletion started (about 15-20 minutes). Remove $HOME/.dnslab afterwar
 <p class="small">Every script is in <a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab/tree/main/scripts" target="_blank" rel="noopener">/scripts</a>. Page built 28 Oct 2026.</p></section>
 </main></div>
 <script src="assets/js/site.js"></script>
-<script src="assets/video/videos.js?v=1140013c"></script>
-<script src="assets/video/player.js?v=57ea14eb"></script>
+<script src="assets/video/videos.js?v=d67ce910"></script>
+<script src="assets/video/player.js?v=ed910172"></script>
 </body></html>
