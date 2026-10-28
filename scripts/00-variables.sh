@@ -5,6 +5,9 @@
 # Run from Azure Cloud Shell (Bash), inside the scripts/ folder.
 # Infrastructure: ../infra/main.bicep (subscription scope)
 # =============================================================================
+# Install CLI extensions (dns-resolver) on first use without an interactive prompt
+az config set extension.use_dynamic_install=yes_without_prompt -o none 2>/dev/null
+
 export DEPLOYMENT="dnslab"                 # subscription-scope deployment name
 export LOC_ONP="indonesiacentral"          # simulated on-prem data centre
 export LOC_AZ="southeastasia"              # Azure hub-spoke (also the deployment metadata location)
