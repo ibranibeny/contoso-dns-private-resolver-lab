@@ -2,10 +2,11 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hybrid DNS lab: Azure DNS Private Resolver (Indonesia Central ⇄ Southeast Asia)</title>
 <meta name="description" content="Step-by-step lab: replace DNS forwarder VMs with Azure DNS Private Resolver in a hybrid hub-spoke design, with a site-to-site VPN between Indonesia Central and Southeast Asia.">
-<link rel="stylesheet" href="assets/css/site.css"></head>
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/video/player.css"></head>
 <body>
 <header class="top"><div class="brand">Hybrid DNS lab <span>· Azure DNS Private Resolver</span></div>
-<nav class="toplinks"><a href="#s00">Start</a><a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab" target="_blank" rel="noopener">GitHub</a></nav></header>
+<nav class="toplinks"><a href="#s00">Start</a><a href="videos.html">Videos</a><a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab" target="_blank" rel="noopener">GitHub</a></nav></header>
 <div class="layout">
 <aside class="side"><div class="side-h">Lab guide</div><a href="#overview">Overview</a><a href="#mapping">Lab vs. production design</a><a href="#before">Before you start</a><a href="#s00"><span class="n">0</span>Open Cloud Shell, clone the repo, run the pre-flight check</a><a href="#s01"><span class="n">1</span>The Bicep templates</a><a href="#s02"><span class="n">2</span>Preview with what-if, then deploy</a><a href="#s03"><span class="n">3</span>Wait for the deployment and read its outputs</a><a href="#s04"><span class="n">4</span>What Bicep built: networks and peering</a><a href="#s05"><span class="n">5</span>What Bicep built: site-to-site VPN</a><a href="#s06"><span class="n">6</span>What Bicep built: DNS Private Resolver, ruleset and rules</a><a href="#s07"><span class="n">7</span>What Bicep built: Private Endpoint and the private DNS zone</a><a href="#s08"><span class="n">8</span>What Bicep built: the VMs and their DNS settings</a><a href="#s09"><span class="n">9</span>Promote dc01: contoso.org (AD DS + DNS)</a><a href="#s10"><span class="n">10</span>On-prem → Azure: conditional forwarder to the inbound endpoint</a><a href="#s11"><span class="n">11</span>Azure → AD: tests from the spoke VM</a><a href="#s12"><span class="n">12</span>Domain join over the resolver and the VPN</a><a href="#s13"><span class="n">13</span>Observe: resolver metrics</a><a href="#results">Results</a><a href="#cleanup">Clean up</a><a href="#troubleshooting">Troubleshooting</a><a href="#references">References</a></aside>
 <main>
@@ -14,6 +15,8 @@
   <h1>Replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
   <p class="lead">A working simulation of the hybrid target design. The "on-prem" site runs in <b>Indonesia Central</b> (an AD DS + DNS server and a VPN gateway). Azure runs in <b>Southeast Asia</b> as hub-spoke (a VPN gateway and DNS Private Resolver in the hub, a VM and a Private Endpoint in the spoke). A <b>site-to-site IPsec VPN</b> connects the two, standing in for ExpressRoute.</p>
   <div class="callout note"><div class="callout-h">Lab run completed</div><div>Every screenshot and captured output on this page comes from a real run on 28 Oct 2026. Captured outputs are text copies of the screenshots; subscription names and IDs are masked.</div></div>
+  <div class="lv-embed-h">Watch the overview: an interactive video (click components, replay queries, turn on narration)</div>
+  <div data-lab-video="vintro"></div>
   <div class="chips"><span>Infrastructure as code: Bicep (subscription scope)</span><span>Time: about 60-90 minutes (this run: 27 min deployment + 30 min in-VM steps and tests)</span><span>Cost: about USD 0.92/hour plus 2 VMs while running</span><span>Proves: AD forwarding, domain join, Private Endpoint from on-prem</span></div>
   <figure class="diagram"><a href="assets/img/diagrams/lab-architecture.png" target="_blank" rel="noopener"><img src="assets/img/diagrams/lab-architecture.png" alt="Lab architecture with official Azure icons"></a>
   <figcaption>Lab architecture, drawn with the official Azure Architecture Icons.</figcaption></figure>
@@ -46,6 +49,8 @@
   <div class="step-h"><span class="badge">0</span><div><h2>Open Cloud Shell, clone the repo, run the pre-flight check</h2>
   <div class="meta"><span>Cloud Shell (Bash)</span><span>Time: 5 min</span></div></div></div>
   <p class="why">Every step runs from <b>Azure Cloud Shell (Bash)</b>, which already has the Azure CLI and Bicep. The pre-flight script upgrades Bicep, checks the resource providers and checks that the VM size is offered in <b>both</b> regions. It also generates the lab secrets once (VM admin password and VPN pre-shared key) into <code>~/.dnslab</code>, mode 600, never printed.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v00"></div>
   
   <div class="code"><div class="code-title">Cloud Shell (Bash)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">git clone https://github.com/ibranibeny/contoso-dns-private-resolver-lab.git
 cd contoso-dns-private-resolver-lab/scripts
@@ -70,6 +75,8 @@ dns-resolver   : extension 1.2.0</pre></div>
   <div class="step-h"><span class="badge">1</span><div><h2>The Bicep templates</h2>
   <div class="meta"><span>GitHub · /infra</span><span>Time: 5 min</span></div></div></div>
   <p class="why"><code>main.bicep</code> runs at <b>subscription scope</b>. It creates both resource groups, deploys the two gateway public IPs first (each site's local network gateway needs the <i>other</i> site's address), then deploys the two site modules in parallel. Secrets never sit in a file: <code>main.bicepparam</code> reads them with <code>readEnvironmentVariable()</code>.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v01"></div>
   
   <div class="code"><div class="code-title">infra/main.bicepparam</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">// Parameters for main.bicep. Secrets are read from environment variables that
 // scripts/00-variables.sh exports from ~/.dnslab (generated once, never printed).
@@ -98,6 +105,8 @@ param vpnSharedKey = readEnvironmentVariable(&#x27;VPN_PSK&#x27;)</code></pre></
   <div class="step-h"><span class="badge">2</span><div><h2>Preview with what-if, then deploy</h2>
   <div class="meta"><span>Cloud Shell</span><span>Time: 3 min</span></div></div></div>
   <p class="why"><code>az deployment sub what-if</code> lists every resource the template will create, before anything is created. The deployment then runs in Azure with <code>--no-wait</code>, so it carries on if Cloud Shell times out. The two VPN gateways are the long pole (Microsoft says a gateway can take 45 minutes or more); in this run the whole deployment finished in about 27 minutes, because the two site modules run in parallel.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v02"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./01-deploy-infra.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/01-deploy-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 1: build, preview (what-if) and deploy the whole lab with Bicep.
@@ -128,6 +137,8 @@ or run ./02-wait-infra.sh</pre></div>
   <div class="step-h"><span class="badge">3</span><div><h2>Wait for the deployment and read its outputs</h2>
   <div class="meta"><span>Cloud Shell / Azure portal</span><span>Time: 25-60 min</span></div></div></div>
   <p class="why">The script polls the deployment state every minute, then lists each module's duration and the outputs: both gateway public IPs, the inbound endpoint IP and the generated storage account name.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v03"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./02-wait-infra.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/02-wait-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 2: wait for the Bicep deployment, then show its outputs. Re-run any time; it only reads state.
@@ -155,6 +166,8 @@ OnpremGatewayIp  AzureGatewayIp   InboundEndpointIp  StorageAccount
   <div class="step-h"><span class="badge">4</span><div><h2>What Bicep built: networks and peering</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">Each resolver endpoint gets its <b>own</b> subnet, <b>/28 to /24</b>, delegated to <code>Microsoft.Network/dnsResolvers</code>. The spoke VNet uses the inbound endpoint (10.20.0.4) as its DNS server. The hub keeps Azure-provided DNS, because a VNet must never use its own resolver's inbound endpoint. The peering has <b>gateway transit</b> on the hub side and <b>use remote gateways</b> on the spoke side, and is created only after the hub gateway exists.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v04"></div>
   
   <div class="code"><div class="code-title">infra/modules/azure.bicep (network, peering)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">// Hub DNS stays Azure-provided: never point the resolver&#x27;s own VNet at its inbound endpoint (Microsoft Learn).
 resource hub &#x27;Microsoft.Network/virtualNetworks@2024-05-01&#x27; = {
@@ -296,6 +309,8 @@ peer-spoke-to-hub  Connected  True</pre></div>
   <div class="step-h"><span class="badge">5</span><div><h2>What Bicep built: site-to-site VPN</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
   <p class="why">New VPN gateways must use the zone-redundant <b>AZ SKUs</b>, here <code>VpnGw1AZ</code>, with a <b>Standard</b> zone-redundant public IP. Each site has a <b>local network gateway</b> describing the other site and an IPsec/IKEv2 <b>connection</b> with the same pre-shared key. The on-prem side lists the hub <b>and</b> spoke ranges, so replies to the resolver's outbound endpoint and to the spoke VM come back through the tunnel.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v05"></div>
   
   <div class="code"><div class="code-title">infra/modules/azure.bicep (vpn)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource gw &#x27;Microsoft.Network/virtualNetworkGateways@2024-05-01&#x27; = {
   name: &#x27;vpngw-hub-sea&#x27;
@@ -372,6 +387,8 @@ cn-onprem-to-hub   Connected  IPsec  IKEv2</pre></div>
   <div class="step-h"><span class="badge">6</span><div><h2>What Bicep built: DNS Private Resolver, ruleset and rules</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">The <b>inbound endpoint</b> (static 10.20.0.4) is the DNS server for the spoke and the target of the on-prem forwarders. The <b>outbound endpoint</b> plus the <b>ruleset</b> send <code>contoso.org.</code> and <code>contoso.com.</code> to the DC. Longest-suffix matching means <code>_msdcs</code>, <code>_sites</code> and <code>_tcp</code> are covered too. The ruleset is linked to the <b>hub only</b>: spoke queries reach it through the inbound endpoint, in the hub context.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v06"></div>
   
   <div class="code"><div class="code-title">infra/modules/azure.bicep (resolver)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource resolver &#x27;Microsoft.Network/dnsResolvers@2022-07-01&#x27; = {
   name: &#x27;dnspr-hub-sea&#x27;
@@ -471,6 +488,8 @@ link-hub     vnet-hub-sea</pre></div>
   <div class="step-h"><span class="badge">7</span><div><h2>What Bicep built: Private Endpoint and the private DNS zone</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
   <p class="why"><code>privatelink.blob.core.windows.net</code> is linked to the <b>hub</b>, where the resolver lives. The Private Endpoint's DNS zone group writes the A record. The hub link has <b>fallback to internet</b> (<code>NxDomainRedirect</code>), because the VPN Gateway FAQ asks for it when this zone is linked to a VNet that hosts a VPN gateway: the gateway needs Blob Storage endpoints. The storage account has public network access disabled.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v07"></div>
   
   <div class="code"><div class="code-title">infra/modules/azure.bicep (privatelink)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bicep">resource blobZone &#x27;Microsoft.Network/privateDnsZones@2024-06-01&#x27; = {
   name: blobZoneName
@@ -562,6 +581,8 @@ link-hub  False             NxDomainRedirect  Completed</pre></div>
   <div class="step-h"><span class="badge">8</span><div><h2>What Bicep built: the VMs and their DNS settings</h2>
   <div class="meta"><span>Cloud Shell + Azure portal</span><span>Time: 3 min</span></div></div></div>
   <p class="why">Both VMs have a <b>static private IP</b> (Microsoft recommends this for domain controllers) and <b>no public IP</b>, so in-guest work goes through Run Command. dc01 keeps its AD DS database on a data disk with host caching <b>None</b>. The on-prem VNet keeps Azure-provided DNS, because it hosts a VPN gateway and the VPN Gateway FAQ recommends Azure DNS there. dc01's <b>NIC</b> points at itself instead, which overrides the VNet setting. The VM subnets keep default outbound access so Run Command can return its output (a lab shortcut).</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v08"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./03-verify-infra.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/03-verify-infra.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 3: read back what Bicep built: networks, VPN, peering, resolver, private DNS, VMs (lab resource groups only).
@@ -738,6 +759,8 @@ vm-spoke-app01   southeastasia      10.21.1.4   none      VM running</pre></div>
   <div class="step-h"><span class="badge">9</span><div><h2>Promote dc01: contoso.org (AD DS + DNS)</h2>
   <div class="meta"><span>Cloud Shell → Run Command</span><span>Time: 12 min</span></div></div></div>
   <p class="why">This builds the "on-prem" DNS side: an AD-integrated DNS server that is authoritative for <code>contoso.org</code> (the AD domain) and <code>contoso.com</code> (a second, forest-wide zone). Internet names are forwarded to 168.63.129.16 with a 5-second timeout, because Learn says Windows DNS servers forwarding to Azure DNS should wait more than 4 seconds.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v09"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./04-promote-dc.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/04-promote-dc.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 4: promote vm-onprem-dc01 to the first DC of contoso.org (AD DS + DNS), then add the lab records.
@@ -827,6 +850,8 @@ Server forwarder: 168.63.129.16  UseRootHint=False  Timeout=5s</pre></div>
   <div class="step-h"><span class="badge">10</span><div><h2>On-prem → Azure: conditional forwarder to the inbound endpoint</h2>
   <div class="meta"><span>Cloud Shell → Run Command on dc01</span><span>Time: 4 min</span></div></div></div>
   <p class="why">The same query, <code>&lt;storage&gt;.blob.core.windows.net</code>, runs three times: <b>before</b> (no forwarder), with <b>Option A</b> (forward <code>privatelink.blob.core.windows.net</code>, as Contoso does today) and with <b>Option B</b> (forward the public zone <code>blob.core.windows.net</code>, as Microsoft Learn recommends). Each forwarder is AD-integrated with replication scope <b>Forest</b>.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v10"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./05-onprem-forwarder.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/05-onprem-forwarder.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 5: on-prem AD DNS -&gt; Azure. Test before, then Option A (privatelink zone), then Option B (public zone).
@@ -902,6 +927,8 @@ blob.core.windows.net 10.20.0.4               True Forest</pre></div>
   <div class="step-h"><span class="badge">11</span><div><h2>Azure → AD: tests from the spoke VM</h2>
   <div class="meta"><span>Cloud Shell → Run Command on app01</span><span>Time: 3 min</span></div></div></div>
   <p class="why">The spoke VM asks only the inbound endpoint. AD names and the DC-locator SRV record must come back from the DC across the VPN through the ruleset, and the storage name must resolve to the Private Endpoint IP through the hub-linked zone.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v11"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./06-test-spoke.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/06-test-spoke.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 6: tests from the spoke VM (VNet DNS = inbound endpoint): AD names, DC locator, Private Endpoint, ports.
@@ -968,6 +995,8 @@ TCP 445  to 10.10.1.4 : True</pre></div>
   <div class="step-h"><span class="badge">12</span><div><h2>Domain join over the resolver and the VPN</h2>
   <div class="meta"><span>Cloud Shell → Run Command on app01</span><span>Time: 5 min</span></div></div></div>
   <p class="why">Domain join is the end-to-end proof. It needs the SRV lookups in <code>_msdcs.contoso.org</code> (through the ruleset) and Kerberos, LDAP and SMB to the DC over the VPN. After the restart, the secure channel is checked with nltest.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v12"></div>
   <div class="code"><div class="code-title">Run in Cloud Shell (scripts folder)</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">bash ./07-domain-join.sh</code></pre></div>
   <div class="code"><div class="code-title">scripts/07-domain-join.sh</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash">#!/usr/bin/env bash
 # Step 7: join the spoke VM to contoso.org through the resolver + VPN, then verify the secure channel.
@@ -1017,6 +1046,8 @@ The command completed successfully</pre></div>
   <div class="step-h"><span class="badge">13</span><div><h2>Observe: resolver metrics</h2>
   <div class="meta"><span>Azure portal</span><span>Time: 2 min</span></div></div></div>
   <p class="why">Azure Monitor publishes <b>Queries Per Second</b> for the resolver (REST name <code>QPSMdm</code>, 1-minute grain), which can be split by <code>EndpointArmResourceId</code> (the portal shows this dimension as <b>EndpointId</b>), so the test traffic of steps 10-12 shows up per endpoint. The older <code>QPS</code> metric is marked deprecated. The outbound endpoint only carries queries that match a ruleset rule, here the AD names, so its line is much lower than the inbound one.</p>
+  <div class="lv-embed-h">Watch this step</div>
+  <div data-lab-video="v13"></div>
   
   <div class="code"><div class="code-title">Azure portal</div><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code class="lang-bash"># Portal: dnspr-hub-sea &gt; Monitoring &gt; Metrics &gt; Metric: Queries Per Second (Sum) &gt; Apply splitting: EndpointId</code></pre></div>
   
@@ -1053,4 +1084,6 @@ echo &quot;Deletion started (about 15-20 minutes). Remove $HOME/.dnslab afterwar
 <p class="small">Every script is in <a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab/tree/main/scripts" target="_blank" rel="noopener">/scripts</a>. Page built 28 Oct 2026.</p></section>
 </main></div>
 <script src="assets/js/site.js"></script>
+<script src="assets/video/videos.js"></script>
+<script src="assets/video/player.js"></script>
 </body></html>

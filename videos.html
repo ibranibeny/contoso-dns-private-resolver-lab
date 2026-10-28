@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Video walkthrough: Hybrid DNS lab with Azure DNS Private Resolver</title>
+<meta name="description" content="Interactive videos for every step of the hybrid DNS lab: Azure DNS Private Resolver, site-to-site VPN, Private Endpoint DNS and domain join.">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/video/player.css">
+<style>
+.vpage{max-width:1400px;margin:0 auto;padding:1.4rem 2rem 3rem}
+.vpage h1{margin:.2rem 0 .4rem}
+.vpage .lead{max-width:70rem}
+.keys{font-size:.88rem;color:#516071;margin:.4rem 0 0}
+.keys kbd{background:#fff;border:1px solid #C1CBD6;border-bottom-width:2px;border-radius:4px;padding:0 .35em;font-family:Consolas,monospace;font-size:.85em}
+@media (max-width:980px){.vpage{padding:1rem}}
+@media (prefers-color-scheme:dark){body{background:#0E1621;color:#E6EDF3}.vpage h1{color:#fff}.vpage .lead,.lv-opts{color:#C9D4DF}.keys{color:#AFC0D0}.keys kbd{background:#13202E;border-color:#2B3B4E;color:#E6EDF3}.lv-item{background:#13202E;border-color:#2B3B4E;color:#E6EDF3}.lv-item small{color:#9FB0C2}.lv-item.cur{background:#16324F;border-color:#3B8EDB}}
+</style></head>
+<body>
+<header class="top"><div class="brand">Hybrid DNS lab <span>· Video walkthrough</span></div>
+<nav class="toplinks"><a href="index.html">Lab guide</a><a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab" target="_blank" rel="noopener">GitHub</a></nav></header>
+<main class="vpage">
+<h1>Video walkthrough: replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
+<p class="lead">One short interactive video per stage of the lab, built from the real run on 28 October 2026 (Contoso naming, lab address ranges).
+Watch the DNS queries travel across the architecture, pause to click any component, replay a query, and answer the quick checks. Total running time <b id="lv-total"></b>.</p>
+<div class="lv-opts"><label><input type="checkbox" id="lv-auto" checked> Play the next video automatically</label>
+<span>Narration uses your browser's built-in voice: turn it on with the speaker icon.</span></div>
+<div class="lv-page"><div id="lv-main"></div><nav class="lv-list" id="lv-list" aria-label="Videos"></nav></div>
+<p class="keys">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> previous/next caption · <kbd>C</kbd> captions · <kbd>N</kbd> narration · <kbd>F</kbd> full screen.</p>
+</main>
+<script src="assets/video/videos.js"></script>
+<script src="assets/video/player.js"></script>
+<script>
+(function () {
+  var D = window.LAB_VIDEO_DATA, list = document.getElementById('lv-list'), host = document.getElementById('lv-main'),
+      auto = document.getElementById('lv-auto'), items = {}, cur = null;
+  function nextOf(id) { for (var i = 0; i < D.videos.length - 1; i++) if (D.videos[i].id === id) return D.videos[i + 1]; return null; }
+  function load(id, play) {
+    cur = id; host.innerHTML = ''; var div = document.createElement('div'); host.appendChild(div);
+    var p = window.LabVideo.mount(div, id, {
+      next: nextOf,
+      onNext: function (nid) { load(nid, true); },
+      onEnd: function (eid) { if (auto.checked) { var n = nextOf(eid); if (n) setTimeout(function () { if (cur === eid) load(n.id, true); }, 1800); } }
+    });
+    Object.keys(items).forEach(function (k) { items[k].classList.toggle('cur', k === id); items[k].setAttribute('aria-current', k === id ? 'true' : 'false'); });
+    if (window.history && history.replaceState) history.replaceState(null, '', '#' + id);
+    if (play) p.play();
+    try { div.focus({ preventScroll: true }); } catch (e) { }
+  }
+  D.videos.forEach(function (v, i) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'lv-item';
+    var n = document.createElement('span'); n.className = 'n'; n.textContent = v.id === 'vintro' ? '\u25B6' : String(parseInt(v.id.slice(1), 10));
+    var t = document.createElement('span'); var bt = document.createElement('b'); bt.textContent = v.title;
+    var sm = document.createElement('small'); sm.textContent = v.badge + ' \u00b7 ' + window.LabVideo.fmt(window.LabVideo.duration(v.id)) + (v.quiz ? ' \u00b7 quiz' : '');
+    t.appendChild(bt); t.appendChild(sm); b.appendChild(n); b.appendChild(t);
+    b.addEventListener('click', function () { load(v.id, true); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    list.appendChild(b); items[v.id] = b;
+  });
+  var total = 0; D.videos.forEach(function (v) { total += window.LabVideo.duration(v.id); });
+  document.getElementById('lv-total').textContent = window.LabVideo.fmt(total);
+  var start = (location.hash || '').slice(1);
+  load(items[start] ? start : D.videos[0].id, false);
+})();
+</script>
+</body></html>
