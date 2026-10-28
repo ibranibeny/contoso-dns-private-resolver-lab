@@ -98,7 +98,8 @@
 .lv-term-bar i{width:.85em;height:.85em;border-radius:50%;display:inline-block;background:#FF5F57}
 .lv-term-bar i:nth-child(2){background:#FEBC2E}.lv-term-bar i:nth-child(3){background:#28C840}
 .lv-term-bar span{margin-inline-start:.6em}
-.lv-term-body{flex:1;overflow:hidden;padding:1.8cqw 2.4cqw 16cqw;font-family:Consolas,"Cascadia Mono","Courier New",monospace;line-height:1.45;color:#E6E6E6;white-space:pre}
+.lv-term-body{flex:1;overflow:hidden;padding:1.8cqw 2.4cqw 16cqw;font-family:Consolas,"Cascadia Mono","Courier New",monospace;line-height:1.45;color:#E6E6E6;white-space:pre-wrap;overflow-wrap:anywhere}
+.lv-stage[data-scene=term] .lv-badge{top:.55cqw;inset-inline-start:auto;inset-inline-end:1.2cqw;background:rgba(255,255,255,.14)}
 .lv-ln{min-height:1.45em;border-radius:3px;transition:background .4s,box-shadow .4s}
 .lv-ln[hidden]{display:none}
 .lv-ln.cmd{color:#9CDCFE}

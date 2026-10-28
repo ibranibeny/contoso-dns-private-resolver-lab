@@ -91,6 +91,10 @@
     if (b.wait) d = Math.max(d, 1);
     return Math.round(d * 10) / 10;
   }
+  // shrink an SVG text element so it fits maxW (world units); needs the element in the document
+  function fitText(t, maxW) {
+    try { var w = t.getComputedTextLength(); if (w > maxW && maxW > 0) t.setAttribute('font-size', (parseFloat(t.getAttribute('font-size')) * maxW / w).toFixed(1)); } catch (e) { }
+  }
   function nodeMap(list) { var m = {}; (list || []).forEach(function (n) { m[n.id] = [n.x, n.y, n.w, n.h]; }); return m; }
 
   Player.prototype.flatten = function () {
@@ -344,6 +348,7 @@
     var sc = this.v.scenes[si];
     this.sceneHost.innerHTML = '';
     this.stage.classList.toggle('dark', sc.type === 'shot' || sc.type === 'term');
+    this.stage.setAttribute('data-scene', sc.type);
     var make = { arch: this.sceneWorld, shot: this.sceneWorld, flow: this.sceneWorld, term: this.sceneTerm, title: this.sceneTitle, bullets: this.sceneBullets, quiz: this.sceneQuiz }[sc.type];
     var rt = make.call(this, sc);
     rt.si = si;
@@ -379,6 +384,7 @@
         var t1 = sv('text', { x: tx, y: n.y + (n.sub ? n.h / 2 - 30 : n.h / 2 - 15), 'font-size': 30, 'font-weight': 700 }); t1.textContent = n.t; g.appendChild(t1);
         if (n.sub) { var t2 = sv('text', { 'class': 's', x: tx, y: n.y + n.h / 2 + 6, 'font-size': 23 }); t2.textContent = n.sub; g.appendChild(t2); }
         L.fl.appendChild(g); rt.fnodes[n.id] = g;
+        fitText(t1, n.x + n.w - tx - 18); if (n.sub) fitText(t2, n.x + n.w - tx - 18);
       });
       (sc.edges || []).forEach(function (e) {
         var a = nodes[e.a], b = nodes[e.b], p1, p2;
@@ -476,6 +482,7 @@
       var t = sv('text', { x: r[0] + 22, y: r[1] + r[3] / 2 - 30, 'font-size': 27, 'font-weight': 700, fill: ex.color || '#5C4400' }); t.textContent = ex.t; g.appendChild(t);
       var t2 = sv('text', { x: r[0] + 22, y: r[1] + r[3] / 2 + 6, 'font-size': 22, fill: '#4A3A00' }); t2.textContent = ex.s; g.appendChild(t2);
       L.ex.appendChild(g);
+      fitText(t, r[2] - 40); fitText(t2, r[2] - 40);
     }
     function packet(pk) {
       var pts = expandPath(pk.path, nodes); if (pts.length < 2) return;
@@ -532,6 +539,7 @@
     var bar = el('div', 'lv-term-bar', '<i></i><i></i><i></i><span></span>'); bar.querySelector('span').textContent = sc.title || 'Azure Cloud Shell (Bash)';
     var body = el('div', 'lv-term-body'); wrap.appendChild(bar); wrap.appendChild(body); this.sceneHost.appendChild(wrap);
     var maxLen = 20; sc.lines.forEach(function (l) { maxLen = Math.max(maxLen, (l.t || '').length + (l.c ? 2 : 0)); });
+    maxLen = Math.min(maxLen, 100); // longer lines wrap
     body.style.fontSize = 'max(8px, ' + Math.min(1.55, 93 / (maxLen * 0.6)).toFixed(3) + 'cqw)';
     var rows = sc.lines.map(function (l) {
       var d = el('div', 'lv-ln' + (l.c ? ' cmd' : '') + (l.k ? ' ' + l.k : '')); d.hidden = true; d.dataset.full = l.t || ''; d.textContent = l.t || ''; body.appendChild(d); return d;
@@ -543,10 +551,15 @@
       body.scrollTop = Math.max(0, target);
     }
     rt.layout = function () { scrollTo(rt.shown); };
+    function flush() {
+      rt.queue.forEach(function (i) { var r = rows[i]; r.hidden = false; r.textContent = r.dataset.full; r.classList.remove('lv-caret'); });
+      rt.queue = []; rt.anims = [];
+    }
     rt.apply = function (b, instant) {
       if (b.hlClear) rows.forEach(function (r) { r.classList.remove('hl'); });
       if (b.hl) b.hl.forEach(function (i) { if (rows[i]) rows[i].classList.add('hl'); });
       if (b.show != null && b.show > rt.shown) {
+        flush();
         var from = rt.shown, to = Math.min(b.show, rows.length);
         rt.shown = to;
         if (instant) { for (var i = from; i < to; i++) { rows[i].hidden = false; rows[i].textContent = rows[i].dataset.full; rows[i].classList.remove('lv-caret'); } scrollTo(to); }
@@ -564,7 +577,7 @@
                 r.classList.remove('lv-caret'); r.textContent = full; idx++; acc = -0.25; return false;
               }
               if (acc < 0.045) return false;
-              acc = 0; idx++;
+              acc -= 0.045; idx++;
             }
             return true;
           }];
