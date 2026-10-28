@@ -33,7 +33,8 @@ param forwardedDomains array
 @description('DNS server that is authoritative for forwardedDomains (the on-prem DC).')
 param dnsTargetIp string
 
-var blobZoneName = 'privatelink.blob.core.windows.net'
+// privatelink.blob.core.windows.net in Azure public cloud; environment() keeps it right in sovereign clouds
+var blobZoneName = 'privatelink.blob.${environment().suffixes.storage}'
 var storageAccountName = 'stdnslab${uniqueString(resourceGroup().id)}'
 
 // region network

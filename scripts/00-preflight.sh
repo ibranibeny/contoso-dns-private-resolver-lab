@@ -7,10 +7,19 @@ echo "Bicep          : $(az bicep version 2>/dev/null | head -1)"
 for ns in Microsoft.Network Microsoft.Compute Microsoft.Storage; do
   echo "Provider       : $ns = $(az provider show -n $ns --query registrationState -o tsv)"
 done
+# The lab VMs are regional (no zone pinned), so only a Location-level restriction blocks them.
+# A Zone-level restriction (for example NotAvailableForSubscription in zone 1) is reported but does not block.
 for loc in "$LOC_ONP" "$LOC_AZ"; do
-  ok=$(az vm list-skus -l "$loc" --size "$VM_SIZE" --resource-type virtualMachines \
-        --query "[?length(restrictions)==\`0\`].name | [0]" -o tsv)
-  echo "VM size        : $VM_SIZE in $loc = ${ok:-NOT AVAILABLE - export VM_SIZE=<other size> and re-run}"
+  sku=$(az vm list-skus -l "$loc" --size "$VM_SIZE" --resource-type virtualMachines \
+        --query "[?name=='$VM_SIZE'] | [0].{loc:length(restrictions[?type=='Location']), zones:join(',', restrictions[?type=='Zone'].restrictionInfo.zones[])}" -o tsv)
+  read -r locBlocks zoneList <<< "$sku"
+  if [ -z "$sku" ]; then
+    echo "VM size        : $VM_SIZE in $loc = NOT OFFERED in this region - export VM_SIZE=<other size> and re-run"
+  elif [ "$locBlocks" != "0" ]; then
+    echo "VM size        : $VM_SIZE in $loc = NOT AVAILABLE to this subscription - export VM_SIZE=<other size> and re-run"
+  else
+    echo "VM size        : $VM_SIZE in $loc = available${zoneList:+ (restricted only in zone(s) $zoneList; the lab VMs are not zonal)}"
+  fi
 done
 az extension add --name dns-resolver --upgrade --yes -o none 2>/dev/null
 echo "dns-resolver   : extension $(az extension show --name dns-resolver --query version -o tsv)"
