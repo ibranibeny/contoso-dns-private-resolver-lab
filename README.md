@@ -18,7 +18,7 @@ chmod +x *.sh && git config core.fileMode false   # GitHub stores the scripts wi
 
 ## Video walkthrough
 
-`videos.html` has one short interactive video per stage (overview plus steps 0 to 13), and each step in `index.html` embeds its own video. They are built from the real lab run: camera moves over the architecture, animated DNS queries, the real Cloud Shell output and portal screenshots, plus clickable components, replay buttons and quick quizzes.
+`videos.html` has one short interactive video per stage (overview plus steps 0 to 13) and four hands-on demos recorded live on 31 October 2026: the on-prem conditional forwarder in DNS Manager, nslookup tests on-prem, the ruleset rule in the Azure portal, and nslookup tests from an Azure VM. Each step in `index.html` embeds its own video; the demos are in the *Hands-on demos* section. They are built from the real lab run: camera moves over the architecture, animated DNS queries, the real Cloud Shell output and portal screenshots, plus clickable components, replay buttons and quick quizzes.
 
 Narration plays with an AI-generated voice (Azure neural text-to-speech, recorded per line in `assets/audio/`). Captions match the narration. Mute it with the speaker icon or press `N`. If a clip can't load, the player reads that line with the browser's own voice instead.
 
