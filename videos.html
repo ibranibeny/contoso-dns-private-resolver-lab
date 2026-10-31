@@ -4,7 +4,7 @@
 <title>Video walkthrough: Hybrid DNS lab with Azure DNS Private Resolver</title>
 <meta name="description" content="Interactive videos for every step of the hybrid DNS lab: Azure DNS Private Resolver, site-to-site VPN, Private Endpoint DNS and domain join.">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/video/player.css?v=7851f287">
+<link rel="stylesheet" href="assets/video/player.css?v=1a412af7">
 <style>
 .vpage{max-width:1400px;margin:0 auto;padding:1.4rem 2rem 3rem}
 .vpage h1{margin:.2rem 0 .4rem}
@@ -19,14 +19,14 @@
 <nav class="toplinks"><a href="index.html">Lab guide</a><a href="https://github.com/ibranibeny/contoso-dns-private-resolver-lab" target="_blank" rel="noopener">GitHub</a></nav></header>
 <main class="vpage">
 <h1>Video walkthrough: replace DNS forwarder VMs with Azure DNS Private Resolver</h1>
-<p class="lead">One short interactive video per stage of the lab, built from the real run on 28 October 2026 (Contoso naming, lab address ranges).
+<p class="lead">One short interactive video per stage of the lab, built from the real run on 28 October 2026, plus four hands-on demos recorded live on 31 October 2026 (Contoso naming, lab address ranges).
 Watch the DNS queries travel across the architecture, pause to click any component, replay a query, and answer the quick checks. Total running time <b id="lv-total"></b>.</p>
 <div class="lv-opts"><label><input type="checkbox" id="lv-auto" checked> Play the next video automatically</label>
 <span>Narration plays with a natural AI voice (Azure neural text-to-speech). Mute it with the speaker icon or press N.</span></div>
 <div class="lv-page"><div id="lv-main"></div><nav class="lv-list" id="lv-list" aria-label="Videos"></nav></div>
 <p class="keys">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> previous/next caption · <kbd>C</kbd> captions · <kbd>N</kbd> narration · <kbd>F</kbd> full screen.</p>
 </main>
-<script src="assets/video/videos.js?v=d67ce910"></script>
+<script src="assets/video/videos.js?v=b0c15185"></script>
 <script src="assets/video/player.js?v=ed910172"></script>
 <script>
 (function () {
@@ -48,7 +48,8 @@ Watch the DNS queries travel across the architecture, pause to click any compone
   }
   D.videos.forEach(function (v, i) {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'lv-item';
-    var n = document.createElement('span'); n.className = 'n'; n.textContent = v.id === 'vintro' ? '\u25B6' : String(parseInt(v.id.slice(1), 10));
+    if (v.id === 'd1') { var hd = document.createElement('div'); hd.className = 'lv-sec'; hd.textContent = 'Hands-on demos \u00b7 recorded live on 31 October 2026'; list.appendChild(hd); }
+    var n = document.createElement('span'); n.className = 'n'; n.textContent = v.id === 'vintro' ? '\u25B6' : (v.id.charAt(0) === 'd' ? 'D' + v.id.slice(1) : String(parseInt(v.id.slice(1), 10)));
     var t = document.createElement('span'); var bt = document.createElement('b'); bt.textContent = v.title;
     var sm = document.createElement('small'); sm.textContent = v.badge + ' \u00b7 ' + window.LabVideo.fmt(window.LabVideo.duration(v.id)) + (v.quiz ? ' \u00b7 quiz' : '');
     t.appendChild(bt); t.appendChild(sm); b.appendChild(n); b.appendChild(t);
