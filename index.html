@@ -470,7 +470,7 @@ resource rulesetHubLink &#x27;Microsoft.Network/dnsForwardingRulesets/virtualNet
     }
   }
 }</code></pre></div>
-  
+  <div class="callout note"><div class="callout-h">Prefer the Azure portal?</div><div>Demo 5 creates this same resolver in the Azure portal, screen by screen, recorded live on 1 November 2026: the two /28 subnets, the inbound endpoint with static IP 10.20.0.4, the outbound endpoint, the ruleset and both rules, then the deployment and the checks. <a href="#demo5">Watch Demo 5</a>.</div></div>
   <div class="shots"><figure class="shot"><a href="assets/img/screens/s06-inbound.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-inbound.png" alt="Inbound endpoint in-hub-sea: static IP 10.20.0.4" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Inbound endpoint in-hub-sea: static IP 10.20.0.4</figcaption></figure><figure class="shot"><a href="assets/img/screens/s06-rules.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-rules.png" alt="Forwarding rules: contoso.org. and contoso.com. → 10.10.1.4:53" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Forwarding rules: contoso.org. and contoso.com. → 10.10.1.4:53</figcaption></figure><figure class="shot"><a href="assets/img/screens/s06-links.png" target="_blank" rel="noopener"><img src="assets/img/screens/s06-links.png" alt="Ruleset virtual network link: vnet-hub-sea only" loading="lazy"></a><figcaption><span class="where">Azure portal</span>Ruleset virtual network link: vnet-hub-sea only</figcaption></figure></div>
   <div class="out actual"><div class="out-h">Captured output (excerpt) · 28 Oct 2026</div><pre>Inbound     IP         Allocation
 ----------  ---------  ----------
